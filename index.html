@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SheriaHub - Know Your Rights</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+    }
+
+    /* NAVBAR */
+    .navbar {
+      background: #0a1f44;
+      color: white;
+      padding: 15px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .nav-links a {
+      color: white;
+      text-decoration: none;
+      margin-left: 20px;
+      font-size: 14px;
+    }
+
+    /* HERO */
+    .hero {
+      background: #0a1f44;
+      color: white;
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+
+    .hero p {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    /* CHAT BOX */
+    .chat-container {
+      max-width: 600px;
+      margin: -40px auto 40px;
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .chat-container h2 {
+      margin-top: 0;
+      color: #0a1f44;
+    }
+
+    input {
+      width: 75%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      background: #0a1f44;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #163a73;
+    }
+
+    #response {
+      margin-top: 20px;
+      line-height: 1.6;
+    }
+
+    .paywall {
+      background: #f0f4ff;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    /* FEATURES */
+    .features {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      padding: 40px 20px;
+      flex-wrap: wrap;
+    }
+
+    .feature-box {
+      background: white;
+      padding: 20px;
+      width: 250px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+
+    .feature-box h3 {
+      color: #0a1f44;
+    }
+
+    /* FOOTER */
+    .footer {
+      background: #0a1f44;
+      color: white;
+      text-align: center;
+      padding: 20px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <div class="navbar">
+    <div class="logo">SheriaHub</div>
+    <div class="nav-links">
+      <a href="#">Home</a>
+      <a href="#">How it Works</a>
+      <a href="#">Contact</a>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>Know Your Rights. Instantly.</h1>
+    <p>Get simple answers about rental laws and property rights in Kenya</p>
+  </div>
+
+  <!-- CHAT -->
+  <div class="chat-container">
+    <h2>Ask a Legal Question</h2>
+
+    <input type="text" id="question" placeholder="e.g. Can my landlord evict me without notice?">
+    <button onclick="getAnswer()">Ask</button>
+
+    <div id="response"></div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="features">
+    <div class="feature-box">
+      <h3>⚖️ Simple Answers</h3>
+      <p>No legal jargon. Just clear explanations.</p>
+    </div>
+
+    <div class="feature-box">
+      <h3>📱 Instant Help</h3>
+      <p>Ask anytime and get answers immediately.</p>
+    </div>
+
+    <div class="feature-box">
+      <h3>💰 Affordable</h3>
+      <p>Unlock detailed answers for only KSh 20.</p>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <p>Disclaimer: This platform provides general legal information, not legal advice.</p>
+    <p>© 2026 SheriaHub</p>
+  </div>
+
+  <!-- SCRIPT -->
+  <script>
+    const database = [
+      {
+        keywords: ["evict", "kick out", "lock"],
+        free: "No, a landlord must follow legal process before eviction.",
+        paid: "Under Kenyan law, landlords must give proper notice before eviction and cannot forcefully remove tenants. You can challenge illegal eviction at a tribunal."
+      },
+      {
+        keywords: ["rent increase", "increase rent"],
+        free: "Rent cannot be increased without notice.",
+        paid: "Landlords must give proper notice (usually 1–2 months). You can challenge unfair increases legally."
+      },
+      {
+        keywords: ["enter", "privacy"],
+        free: "Your landlord cannot enter without notice.",
+        paid: "Landlords must give notice before entering your house, except in emergencies. This protects your right to privacy."
+      }
+    ];
+
+    function getAnswer() {
+      let q = document.getElementById("question").value.toLowerCase();
+      let response = document.getElementById("response");
+
+      let found = database.find(item =>
+        item.keywords.some(k => q.includes(k))
+      );
+
+      if (found) {
+        response.innerHTML = `
+          <p><strong>Answer:</strong> ${found.free}</p>
+
+          <div class="paywall">
+            🔒 Unlock full answer for <strong>KSh 20</strong><br><br>
+            <button onclick="unlock('${found.paid}')">Pay with M-Pesa</button>
+          </div>
+        `;
+      } else {
+        response.innerHTML = "<p>We are still building this answer. Try another question.</p>";
+      }
+    }
+
+    function unlock(answer) {
+      let code = prompt("Enter your M-Pesa transaction code:");
+
+      if (code && code.length > 5) {
+        document.getElementById("response").innerHTML = `
+          <p><strong>Full Answer:</strong> ${answer}</p>
+        `;
+      } else {
+        alert("Invalid code. Please try again.");
+      }
+    }
+  </script>
+
+</body>
+</html>
