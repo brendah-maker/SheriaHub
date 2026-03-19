@@ -18,7 +18,7 @@ CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
 BUSINESS_SHORT_CODE = "174379"
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 
-# Initialize Groq Client for Llama
+# Initialize Groq Client
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 payments_db = {}
 
@@ -26,7 +26,7 @@ payments_db = {}
 def home():
     return jsonify({
         "status": "SheriaHub Backend is Live",
-        "engine": "Llama 4 (via Groq)",
+        "engine": "Llama 4 Maverick",
         "timestamp": datetime.datetime.now().isoformat()
     }), 200
 
@@ -40,10 +40,6 @@ def ask_ai():
         question = data.get("question", "")
         category = data.get("category", "tenant")
         
-        # 2026 Best Practice: Use 'llama-4-scout' for fast summaries 
-        # or 'llama-4-maverick' for deep legal reasoning.
-        selected_model = data.get("model", "llama-4-maverick")
-
         persona = "Kenyan Employment Law expert" if category == "employment" else "Kenyan Landlord & Tenant Law expert"
         
         system_prompt = f"""
@@ -55,14 +51,13 @@ def ask_ai():
         }}
         """
 
-        # Llama 4 implementation via Groq
         completion = client.chat.completions.create(
-            model=selected_model,
+            model="llama-4-maverick",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": question}
             ],
-            response_format={"type": "json_object"} # Forces the model to output JSON
+            response_format={"type": "json_object"}
         )
 
         return jsonify(json.loads(completion.choices[0].message.content))
@@ -76,18 +71,15 @@ def stk_push():
         phone = data.get("phone", "").strip().replace("+", "")
         amount = data.get("amount", 20)
 
-        # Phone formatting for Safaricom (254...)
         if phone.startswith("0"): phone = "254" + phone[1:]
         elif phone.startswith("7") or phone.startswith("1"): phone = "254" + phone
         
-        # Get M-Pesa Access Token
         auth_res = requests.get(
             "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials", 
             auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET)
         )
         access_token = auth_res.json().get("access_token")
 
-        # Generate Password
         timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         password = base64.b64encode((BUSINESS_SHORT_CODE + PASSKEY + timestamp).encode()).decode()
 
