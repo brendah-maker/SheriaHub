@@ -2,19 +2,28 @@ import os
 import base64
 import datetime
 import requests
+import json
+import google.generativeai as genai
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from requests.auth import HTTPBasicAuth
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app)
 
-# 1. Configuration - Pulled from Render Environment Variables for security
+# --- CONFIGURATION ---
+# M-Pesa Keys
 CONSUMER_KEY = os.getenv("CONSUMER_KEY")
 CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
-BUSINESS_SHORT_CODE = "174379"  # Default Sandbox Shortcode
+BUSINESS_SHORT_CODE = "174379"  # Sandbox
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 
+# Gemini AI Key
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+# --- HELPERS ---
 def get_access_token():
     api_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
     try:
@@ -22,26 +31,56 @@ def get_access_token():
         r.raise_for_status()
         return r.json().get('access_token')
     except Exception as e:
-        print(f"Token Error: {e}")
+        print(f"Safaricom Token Error: {e}")
         return None
 
-# 2. Add a Home Route so the URL doesn't show "Not Found"
+# --- ROUTES ---
 @app.route('/')
 def home():
-    return jsonify({"status": "SheriaHub API is Live", "message": "Ready for M-Pesa requests!"})
+    return jsonify({"status": "SheriaHub API is Live", "message": "Ready for AI & M-Pesa requests!"})
+
+@app.route('/ask-ai', methods=['POST'])
+def ask_ai():
+    data = request.json
+    user_question = data.get('question')
+    
+    # The System Prompt defines the AI's "personality" and knowledge base
+    prompt = f"""
+    You are 'Sheria AI', a Kenyan Legal Expert specializing in Tenant and Landlord rights.
+    The user is asking: "{user_question}"
+    
+    Please provide your response in exactly this JSON format:
+    {{
+      "free_summary": "A 1-sentence general right regarding this issue in simple terms.",
+      "paid_deep_dive": "A detailed explanation (approx 100 words) including references to the Rent Restriction Act or Landlord & Tenant Bill, specific notice periods, and steps to take at the Rent Restriction Tribunal."
+    }}
+    Rules: 
+    1. Use Kenyan context only. 
+    2. Do not include markdown code blocks (like ```json). 
+    3. Be empathetic but professional.
+    """
+
+    try:
+        response = model.generate_content(prompt)
+        # Clean up response text to ensure it's valid JSON
+        clean_text = response.text.replace('```json', '').replace('```', '').strip()
+        ai_data = json.loads(clean_text)
+        return jsonify(ai_data)
+    except Exception as e:
+        print(f"Gemini AI Error: {e}")
+        return jsonify({"free_summary": "Error connecting to AI.", "paid_deep_dive": "AI is currently unavailable."}), 500
 
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     data = request.json
     phone_number = data.get('phone') 
     
-    # Basic Validation
-    if not phone_number or len(str(phone_number)) < 10:
-        return jsonify({"CustomerMessage": "Invalid phone number format"}), 400
+    if not phone_number:
+        return jsonify({"CustomerMessage": "Phone number is required"}), 400
 
     access_token = get_access_token()
     if not access_token:
-        return jsonify({"CustomerMessage": "Internal Server Error: Failed to connect to Safaricom"}), 500
+        return jsonify({"CustomerMessage": "Failed to connect to Safaricom"}), 500
 
     timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     password_str = BUSINESS_SHORT_CODE + PASSKEY + timestamp
@@ -54,18 +93,18 @@ def stk_push():
         "Password": password,
         "Timestamp": timestamp,
         "TransactionType": "CustomerPayBillOnline",
-        "Amount": 1, # Set to 1 for testing
+        "Amount": 1,
         "PartyA": phone_number,
         "PartyB": BUSINESS_SHORT_CODE,
         "PhoneNumber": phone_number,
-        "CallBackURL": "https://sheriahub.onrender.com/callback", 
+        "CallBackURL": "[https://sheriahub.onrender.com/callback](https://sheriahub.onrender.com/callback)", 
         "AccountReference": "SheriaHub",
         "TransactionDesc": "Legal Info Payment"
     }
     
     try:
         response = requests.post(
-            "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+            "[https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest](https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest)",
             json=payload,
             headers=headers
         )
@@ -73,14 +112,11 @@ def stk_push():
     except Exception as e:
         return jsonify({"CustomerMessage": str(e)}), 500
 
-# 3. Add a Callback Route to handle Safaricom's response
 @app.route('/callback', methods=['POST'])
 def mpesa_callback():
-    data = request.json
-    print("M-Pesa Callback Received:", data)
+    print("M-Pesa Callback:", request.json)
     return jsonify({"ResultCode": 0, "ResultDesc": "Success"})
 
 if __name__ == '__main__':
-    # Render uses the PORT environment variable
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
