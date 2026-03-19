@@ -5,29 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SheriaHub | Kenya's AI Legal Assistant</title>
     <style>
-        :root { --navy: #0a1f44; --gold: #f39c12; --light: #f8f9fa; }
+        :root { --navy: #0a1f44; --gold: #f39c12; --light: #f8f9fa; --slate: #64748b; }
         body { font-family: 'Inter', system-ui, sans-serif; background: var(--light); color: #333; margin: 0; }
         
-        /* Navigation & Hero */
         header { background: var(--navy); color: white; padding: 1rem 5%; display: flex; justify-content: space-between; align-items: center; }
         .hero { background: var(--navy); color: white; padding: 60px 5%; text-align: center; border-bottom: 5px solid var(--gold); }
         
-        /* Main Container */
-        .container { max-width: 800px; margin: -40px auto 40px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative; }
+        .container { max-width: 800px; margin: -40px auto 40px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        /* Input Area */
         .search-area { display: flex; gap: 10px; margin-bottom: 30px; }
         input { flex: 1; padding: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; outline: none; }
-        input:focus { border-color: var(--navy); }
-        button { background: var(--navy); color: white; border: none; padding: 15px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button { background: var(--navy); color: white; border: none; padding: 15px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
-        /* Output Styling */
-        .legal-box { border-left: 5px solid var(--navy); background: #f0f4f8; padding: 20px; border-radius: 4px; margin-top: 20px; line-height: 1.6; }
+        /* Coming Soon Section */
+        .coming-soon-header { text-align: center; margin-top: 50px; color: var(--navy); }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
+        .feature-card { background: white; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center; position: relative; overflow: hidden; }
+        .badge { background: var(--gold); color: black; font-size: 0.7rem; font-weight: bold; padding: 3px 10px; border-radius: 20px; position: absolute; top: 10px; right: 10px; }
+        .feature-card i { font-size: 2rem; display: block; margin-bottom: 10px; }
+
+        .legal-box { border-left: 5px solid var(--navy); background: #f0f4f8; padding: 20px; border-radius: 4px; margin-top: 20px; }
         .pay-card { text-align: center; border: 2px dashed var(--gold); padding: 30px; border-radius: 12px; background: #fffdf5; margin-top: 20px; }
-        .unlocked-content { background: #e7f9ee; border-left: 5px solid #27ae60; padding: 20px; border-radius: 8px; margin-top: 20px; animation: fadeIn 0.5s ease-in; }
-        
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .unlocked-content { background: #e7f9ee; border-left: 5px solid #27ae60; padding: 20px; border-radius: 8px; margin-top: 20px; }
         .footer { text-align: center; padding: 40px; color: #777; font-size: 0.9rem; }
     </style>
 </head>
@@ -35,30 +34,54 @@
 
 <header>
     <div style="font-size: 1.5rem; font-weight: bold;">⚖️ SheriaHub</div>
-    <div style="font-size: 0.9rem;">Kenya Landlord-Tenant Act Specialist</div>
+    <div style="font-size: 0.9rem;">2026 Legal Tech Edition</div>
 </header>
 
 <div class="hero">
-    <h1>Legal Clarity for Every Kenyan</h1>
-    <p>Get instant summaries and detailed legal procedures for a small fee.</p>
+    <h1>Kenyan Legal Information, Instant.</h1>
+    <p>Navigating the Rent Restriction Act has never been easier.</p>
 </div>
 
 <div class="container">
     <div class="search-area">
-        <input type="text" id="userInput" placeholder="Ask e.g. 'Can I be evicted without notice?'">
-        <button onclick="getAdvice()">Ask AI</button>
+        <input type="text" id="userInput" placeholder="Ask about evictions, deposits, or tribunal cases...">
+        <button onclick="getAdvice()">Consult AI</button>
     </div>
 
     <div id="displayArea">
         </div>
+
+    <div class="coming-soon-header">
+        <h3>🚀 Future Updates</h3>
+    </div>
+    <div class="features-grid">
+        <div class="feature-card">
+            <span class="badge">COMING SOON</span>
+            <i>📄</i>
+            <strong>Lease Reviewer</strong>
+            <p style="font-size: 0.8rem; color: var(--slate);">Upload your lease agreement for instant risk analysis.</p>
+        </div>
+        <div class="feature-card">
+            <span class="badge">COMING SOON</span>
+            <i>🏢</i>
+            <strong>Tribunal Filings</strong>
+            <p style="font-size: 0.8rem; color: var(--slate);">Auto-generate forms for the Rent Restriction Tribunal.</p>
+        </div>
+        <div class="feature-card">
+            <span class="badge">COMING SOON</span>
+            <i>📞</i>
+            <strong>Lawyer Match</strong>
+            <p style="font-size: 0.8rem; color: var(--slate);">Direct connection to verified Kenyan conveyancing lawyers.</p>
+        </div>
+    </div>
 </div>
 
 <div class="footer">
-    &copy; 2026 SheriaHub Kenya. Disclaimer: This is AI-generated legal information, not formal legal counsel.
+    &copy; 2026 SheriaHub Kenya. This tool provides legal information using Gemini 2.5 Flash.
 </div>
 
 <script>
-    const API_URL = "https://sheriahub.onrender.com"; // Change to your actual URL
+    const API_URL = "https://sheriahub.onrender.com";
     let paidInfo = "";
 
     async function getAdvice() {
@@ -66,7 +89,7 @@
         const out = document.getElementById("displayArea");
         if(!query) return alert("Please type a question.");
 
-        out.innerHTML = "<p style='text-align:center;'>⏳ Consulting the Rent Restriction Act...</p>";
+        out.innerHTML = "<p style='text-align:center;'>⏳ Analyzing Kenyan Statutes...</p>";
 
         try {
             const res = await fetch(`${API_URL}/ask-ai`, {
@@ -83,8 +106,8 @@
                     ${data.free_summary}
                 </div>
                 <div class="pay-card" id="payBox">
-                    <h3>Unlock Full Legal Procedure</h3>
-                    <p>Includes section citations and step-by-step Tribunal action plans.</p>
+                    <h3>Unlock Full Legal Action Plan</h3>
+                    <p>Includes specific citations and Tribunal procedures.</p>
                     <button style="background:var(--gold); color:black;" onclick="initiatePayment()">
                         Unlock for KSh 20
                     </button>
@@ -92,16 +115,16 @@
                 </div>
             `;
         } catch (e) {
-            out.innerHTML = "<p style='color:red;'>❌ Connection to Sheria AI failed. Is the server awake?</p>";
+            out.innerHTML = "<p style='color:red;'>❌ Connection failed. Ensure your Render backend is live.</p>";
         }
     }
 
     async function initiatePayment() {
-        const phone = prompt("Enter Safaricom Number (e.g. 254712345678)");
+        const phone = prompt("Enter M-Pesa Number (2547...)");
         if(!phone) return;
 
         const status = document.getElementById("payStatus");
-        status.innerText = "Check your phone for the M-Pesa prompt...";
+        status.innerText = "Processing... check your phone.";
 
         try {
             const res = await fetch(`${API_URL}/stkpush`, {
@@ -120,18 +143,18 @@
                         clearInterval(interval);
                         document.getElementById("payBox").innerHTML = `
                             <div class="unlocked-content">
-                                <strong>✅ Fully Unlocked Legal Strategy:</strong><br><br>
+                                <strong>✅ Unlocked Deep-Dive:</strong><br><br>
                                 ${paidInfo.replace(/\n/g, "<br>")}
                             </div>
                         `;
                     } else if (checkData.status === "failed") {
                         clearInterval(interval);
-                        status.innerText = "❌ Payment failed. Try again.";
+                        status.innerText = "❌ Payment failed.";
                     }
                 }, 3000);
             }
         } catch (e) {
-            status.innerText = "❌ M-Pesa system offline.";
+            status.innerText = "❌ Payment system error.";
         }
     }
 </script>
