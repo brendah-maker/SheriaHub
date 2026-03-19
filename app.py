@@ -10,20 +10,34 @@ from google import genai
 from google.genai import types
 
 app = Flask(__name__)
+# Enable CORS so your frontend can talk to this backend
 CORS(app)
 
-# --- Configuration (Set these in Vercel/Render Environment Variables) ---
+# --- Configuration (Set these in Render Environment Variables) ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 CONSUMER_KEY = os.getenv("CONSUMER_KEY")
 CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
 BUSINESS_SHORT_CODE = "174379"
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 
+# Initialize Gemini Client
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 payments_db = {}
 
+@app.route('/')
+def home():
+    """Root route to prevent 404/502 errors on Render health checks."""
+    return jsonify({
+        "status": "SheriaHub Backend is Live",
+        "model": "Gemini 2.5 Flash",
+        "timestamp": datetime.datetime.now().isoformat()
+    }), 200
+
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
+    if not client:
+        return jsonify({"error": "Gemini API Key not configured"}), 500
+        
     try:
         data = request.get_json()
         question = data.get("question", "")
@@ -41,6 +55,7 @@ def ask_ai():
         User Question: {question}
         """
 
+        # Using Gemini 2.5 Flash as requested
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
@@ -57,13 +72,18 @@ def stk_push():
         phone = data.get("phone", "").strip().replace("+", "")
         amount = data.get("amount", 20)
 
+        # Phone formatting for Safaricom (254...)
         if phone.startswith("0"): phone = "254" + phone[1:]
         elif phone.startswith("7") or phone.startswith("1"): phone = "254" + phone
         
-        auth_res = requests.get("https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials", 
-                                auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET))
+        # Get M-Pesa Access Token
+        auth_res = requests.get(
+            "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials", 
+            auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET)
+        )
         access_token = auth_res.json().get("access_token")
 
+        # Generate Password
         timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         password = base64.b64encode((BUSINESS_SHORT_CODE + PASSKEY + timestamp).encode()).decode()
 
@@ -76,19 +96,24 @@ def stk_push():
             "PartyA": phone,
             "PartyB": BUSINESS_SHORT_CODE,
             "PhoneNumber": phone,
-            "CallBackURL": "https://sheriahub.vercel.app/api/callback", 
+            "CallBackURL": "https://sheriahub.onrender.com/api/callback", 
             "AccountReference": "SheriaHub",
             "TransactionDesc": "Legal Advice Fee"
         }
 
-        res = requests.post("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
-                             json=stk_payload, headers={"Authorization": f"Bearer {access_token}"})
+        res = requests.post(
+            "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+            json=stk_payload, 
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
         
-        cid = res.json().get("CheckoutRequestID")
+        res_data = res.json()
+        cid = res_data.get("CheckoutRequestID")
+        
         if cid:
             payments_db[cid] = "pending"
             return jsonify({"checkout_id": cid})
-        return jsonify({"error": "STK Push failed"}), 400
+        return jsonify({"error": "STK Push failed", "details": res_data}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -105,9 +130,7 @@ def callback():
 def check_payment(checkout_id):
     return jsonify({"status": payments_db.get(checkout_id, "pending")})
 
-
-
 if __name__ == '__main__':
-    # Render provides a 'PORT' env var, default to 5000 for local testing
-    port = int(os.environ.get("PORT", 5000))
+    # CRITICAL: Bind to 0.0.0.0 and use the PORT env var for Render
+    port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
