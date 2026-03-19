@@ -3,376 +3,318 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SheriaHub - Tenant & Landlord Rights Kenya</title>
+<title>SheriaHub - Kenya's Legal AI</title>
 
 <style>
-/* CSS Variables for easy color management in 2026 */
 :root {
   --navy: #0a1f44;
-  --secondary-navy: #163a73;
-  --gold: #f39c12; /* That golden pop color */
+  --gold: #f39c12; /* Golden Pop */
   --bg: #f5f7fa;
+  --white: #ffffff;
   --text: #333;
 }
 
 body {
   margin: 0;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Segoe UI', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
-  line-height: 1.6;
 }
 
 /* NAVBAR */
 .navbar {
   background: var(--navy);
   color: white;
-  padding: 1rem 10%;
+  padding: 15px 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  border-bottom: 3px solid var(--gold);
 }
 
-.logo {
-  font-size: 1.5rem;
-  font-weight: bold;
-  letter-spacing: 1px;
-}
-
-/* HERO SECTION - Now with a gold accent bar */
+/* HERO */
 .hero {
   background: var(--navy);
   color: white;
   text-align: center;
-  padding: 80px 20px;
-  position: relative;
+  padding: 60px 20px;
 }
 
-.hero::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 6px;
-  background: var(--gold); /* Thin gold line under hero */
+.hero h1 { margin: 0; font-size: 2.2rem; }
+.hero p { opacity: 0.8; margin-top: 10px; }
+
+/* CATEGORY SWITCHER */
+.category-selector {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: -30px;
+  margin-bottom: 20px;
 }
 
-.hero h1 {
-  margin: 0;
-  font-size: 2.5rem;
-  margin-bottom: 10px;
+.cat-btn {
+  padding: 12px 25px;
+  border-radius: 30px;
+  border: 2px solid var(--gold);
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+  background: var(--white);
+  color: var(--navy);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-.hero p {
-  opacity: 0.9;
-  font-size: 1.1rem;
+.cat-btn.active {
+  background: var(--gold);
+  color: black;
 }
 
-/* CHAT/INPUT CONTAINER - With a glow/gold border */
+/* CHAT CONTAINER */
 .chat-container {
-  max-width: 700px;
-  margin: -40px auto 40px;
-  background: white;
-  border-radius: 12px;
+  max-width: 750px;
+  margin: 0 auto 40px;
+  background: var(--white);
+  border-radius: 15px;
   padding: 30px;
-  box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-  border: 1px solid #e1e1e1; /* Subtle border */
-  position: relative;
-}
-
-/* Making it pop when focused */
-.chat-container:focus-within {
-  border-color: var(--gold);
-  box-shadow: 0 10px 30px rgba(243, 156, 18, 0.15); /* Gold shadow glow */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  border: 1px solid #eee;
 }
 
 .input-group {
   display: flex;
   gap: 10px;
-  margin-top: 1.5rem;
 }
 
-input[type="text"] {
+input {
   flex-grow: 1;
   padding: 15px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 2px solid #ddd;
-  font-size: 16px;
-  transition: 0.3s;
-}
-
-input[type="text"]:focus {
   outline: none;
-  border-color: var(--gold); /* Gold border on focus */
+  font-size: 1rem;
 }
 
-button {
-  padding: 12px 25px;
+input:focus { border-color: var(--gold); }
+
+.ask-btn {
+  padding: 15px 30px;
   background: var(--navy);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   font-weight: bold;
-  transition: 0.3s;
 }
 
-button:hover {
-  background: var(--secondary-navy);
-  transform: translateY(-1px); /* Slight lift on hover */
-}
+/* RESPONSE & PAYWALL */
+#response { margin-top: 25px; line-height: 1.6; }
 
-#responseArea {
-  margin-top: 25px;
-}
-
-/* PAYWALL - Now with a strong gold dotted border */
 .paywall {
-  background: #fffdf5; /* Very subtle gold background hint */
-  padding: 2rem;
+  background: #fffdf2;
+  border: 2px dashed var(--gold);
+  padding: 25px;
+  border-radius: 12px;
   margin-top: 20px;
-  border: 2px dashed var(--gold); /* Prominent gold dashed border */
-  border-radius: 8px;
   text-align: center;
+  animation: slideUp 0.4s ease-out;
 }
 
-.unlock-btn {
+.amount-badge {
   background: var(--gold);
-  color: #000; /* Dark text for contrast against gold */
-  margin-top: 15px;
+  color: black;
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-weight: bold;
+  font-size: 0.9rem;
 }
 
-/* FEATURES - With subtle gold top borders */
+/* FEATURES */
 .features {
   display: flex;
   justify-content: center;
   gap: 20px;
   flex-wrap: wrap;
-  padding: 40px;
+  padding: 20px;
 }
 
 .feature-box {
   background: white;
   padding: 20px;
-  width: 260px;
+  width: 240px;
   border-radius: 12px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
   text-align: center;
-  border-top: 4px solid #eee; /* Light border by default */
-  transition: 0.3s;
+  border-bottom: 4px solid var(--gold);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
 }
 
-.feature-box:hover {
-  border-top-color: var(--gold); /* Gold top border on hover */
-  transform: translateY(-3px);
-}
-
-/* AI PREVIEW - Restored "Coming Soon" styling with gold accents */
+/* AI PREVIEW / COMING SOON */
 .ai-preview {
-  max-width: 900px;
+  max-width: 750px;
   margin: 40px auto;
   text-align: center;
-  padding: 50px;
+  padding: 30px;
   background: #eef2f7;
-  border-radius: 20px;
-  position: relative;
-  border: 1px solid #ddd;
+  border-radius: 15px;
+  border: 1px solid #cbd5e1;
 }
 
-.preview-badge {
-  background: var(--gold);
-  color: #000;
-  padding: 5px 15px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: bold;
-  position: absolute;
-  top: 15px;
-  right: 15px;
-}
-
-/* FOOTER */
 .footer {
   background: var(--navy);
   color: white;
   text-align: center;
   padding: 30px;
-  margin-top: 40px;
-  font-size: 0.9em;
-  border-top: 4px solid var(--gold); /* Gold line on footer */
+  border-top: 5px solid var(--gold);
 }
 
-/* Animation for unlocked content */
-.fadeIn {
-  animation: fadeInEffect 0.5s ease-in-out;
-}
-
-@keyframes fadeInEffect {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 
 <body>
 
-<nav class="navbar">
-  <div class="logo">SheriaHub</div>
-  <div style="font-size: 0.9em; opacity: 0.8;">Kenya's AI Tenant Assistant</div>
-</nav>
+<div class="navbar">
+  <div style="font-size: 1.4rem; font-weight: bold;">⚖️ SheriaHub</div>
+  <div style="font-size: 0.8rem; opacity: 0.8;">Kenya Legal AI v2.5</div>
+</div>
 
-<header class="hero">
-  <h1>Tenant & Landlord Rights: Kenyan Law Simplified</h1>
-  <p>Get instant legal information powered by Gemini 2.5 Flash.</p>
-</header>
+<div class="hero">
+  <h1>Your Legal Rights, Simplified.</h1>
+  <p>Instant legal intelligence for Tenants, Landlords, and Employees.</p>
+</div>
 
-<main class="chat-container">
-  <h3>Ask a Legal Question</h3>
+<div class="category-selector">
+  <div class="cat-btn active" id="tenant-tab" onclick="switchCategory('tenant')">🏠 Tenant Law</div>
+  <div class="cat-btn" id="job-tab" onclick="switchCategory('employment')">💼 Employment Law</div>
+</div>
+
+<div class="chat-container">
   <div class="input-group">
-    <input type="text" id="userInput" placeholder="e.g. Can my landlord locking my house for rent arrears?">
-    <button onclick="getLegalAdvice()">Ask Sheria AI</button>
+    <input type="text" id="question" placeholder="Ask about eviction notices...">
+    <button class="ask-btn" onclick="getLegalAdvice()">Consult AI</button>
   </div>
+  <div id="response"></div>
+</div>
 
-  <div id="responseArea">
-    </div>
-</main>
-
-<section class="features">
+<div class="features">
   <div class="feature-box">
-    <h3 style="color: var(--navy);">⚖️ Verified Law</h3>
-    <p>Based on the Rent Restriction Act and Kenyan legal framework.</p>
+    <h3>⚖️ Verified Statutes</h3>
+    <p>Citing the Employment Act & Rent Restriction Act.</p>
   </div>
-
   <div class="feature-box">
-    <h3 style="color: var(--navy);">🏛️ Tribunal Guide</h3>
-    <p>Understand how to handle disputes at the Rent Tribunal Board.</p>
+    <h3>🏛️ Tribunal Steps</h3>
+    <p>Actionable steps for the Rent Board or Labour Court.</p>
   </div>
+</div>
 
-  <div class="feature-box">
-    <h3 style="color: var(--navy);">🔒 Secure Access</h3>
-    <p>Unlock detailed action steps instantly via M-Pesa.</p>
-  </div>
-</section>
+<div class="ai-preview">
+  <h3>🚀 Coming Soon</h3>
+  <p><strong>Lease & Contract Reviewer:</strong> Upload any document to detect unfair clauses before you sign.</p>
+</div>
 
-<aside class="ai-preview">
-  <span class="preview-badge">Beta Preview</span>
-  <h2>🚀 Lease Reviewer: Coming Soon</h2>
-  <p>Upload your lease agreement and let Sheria AI detect unfair clauses instantly.</p>
-</aside>
-
-<footer class="footer">
-  <p><strong>Disclaimer:</strong> This is an AI tool providing information, not professional legal advice.</p>
-  <p>© 2026 SheriaHub Kenya | All Rights Reserved</p>
-</footer>
+<div class="footer">
+  <p><strong>Disclaimer:</strong> This is an AI information tool, not legal advice.</p>
+  <p>© 2026 SheriaHub Kenya | Powered by Gemini 2.5 Flash</p>
+</div>
 
 <script>
-// --- JAVASCRIPT FIXED FOR 2026 GEMINI/M-PESAHandshake ---
-const API_BASE_URL = "https://sheriahub.onrender.com"; // YOUR RENDER URL
-let storedPaidAnswer = "";
+const API = "https://sheriahub.onrender.com"; // YOUR RENDER/VERCEL URL
+let currentCategory = "tenant";
+let storedPaidContent = "";
+let currentPrice = 20;
 
-async function getLegalAdvice() {
-  const inputField = document.getElementById("userInput");
-  const question = inputField.value;
-  const display = document.getElementById("responseArea");
-
-  if (!question) return alert("Please enter a question first.");
-
-  display.innerHTML = "<p style='text-align:center;'>⏳ Sheria AI is consulting the statutes... please wait.</p>";
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/ask-ai`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ question })
-    });
-
-    const data = await response.json();
-    
-    // Store the paid part in the browser (Note: Security warning from earlier still applies)
-    storedPaidAnswer = data.paid_deep_dive;
-
-    display.innerHTML = `
-      <div class="legal-box" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--navy);">
-        <strong>Legal Overview:</strong>
-        <p>${data.free_summary}</p>
-      </div>
-
-      <div class="paywall">
-        <h4>🔓 Unlock the Full Legal Deep-Dive (KSh 20)</h4>
-        <p>includes specific citations from the Rent Restriction Act and step-by-step tribunal procedures.</p>
-        <button class="unlock-btn" onclick="initiateUnlock()">Pay with M-Pesa</button>
-        <div id="payStatus" style="margin-top: 10px; font-weight: bold; color: var(--gold);"></div>
-      </div>
-    `;
-  } catch (err) {
-    display.innerHTML = "<p style='color:red; text-align:center;'>❌ System connection error. Ensure the Render backend is live.</p>";
-  }
+function switchCategory(cat) {
+  currentCategory = cat;
+  document.getElementById('tenant-tab').classList.toggle('active', cat === 'tenant');
+  document.getElementById('job-tab').classList.toggle('active', cat === 'employment');
+  
+  // Set the dynamic price based on category
+  currentPrice = (cat === 'tenant') ? 20 : 50;
+  
+  const placeholders = {
+    tenant: "e.g. My landlord increased rent by 50%...",
+    employment: "e.g. I was terminated without a terminal letter..."
+  };
+  document.getElementById('question').placeholder = placeholders[cat];
 }
 
-async function initiateUnlock() {
-  const phoneNum = prompt("Enter M-Pesa Phone Number (Format: 2547XXXXXXXX)");
-  if (!phoneNum) return;
-  
-  const statusDiv = document.getElementById("payStatus");
-  statusDiv.innerHTML = "⏳ Initiating STK Push... Check phone.";
+async function getLegalAdvice() {
+  const q = document.getElementById("question").value;
+  const resDiv = document.getElementById("response");
+  if (!q) return;
+
+  resDiv.innerHTML = "<p style='text-align:center;'>⏳ Sheria AI is analyzing Kenyan Law...</p>";
 
   try {
-    const res = await fetch(`${API_BASE_URL}/stkpush`, {
+    const res = await fetch(`${API}/ask-ai`, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ phone: phoneNum })
+      body: JSON.stringify({ question: q, category: currentCategory })
     });
 
     const data = await res.json();
-    
-    if (data.error || !data.checkout_id) {
-      statusDiv.innerHTML = "❌ Failed to send STK Push. Try again.";
-      return;
-    }
+    storedPaidContent = data.paid_deep_dive;
 
-    const checkoutId = data.checkout_id;
-    statusDiv.innerHTML = "⏳ Waiting for you to enter M-Pesa PIN on your phone...";
+    resDiv.innerHTML = `
+      <div style="padding: 15px; border-left: 4px solid var(--navy); background: #f9fafb;">
+        <strong>Legal Summary (Free):</strong><br>
+        ${data.free_summary}
+      </div>
 
-    // Start polling the backend for payment status using CheckoutRequestID
-    const pollInterval = setInterval(async () => {
-      try {
-        const check = await fetch(`${API_BASE_URL}/check-payment/${checkoutId}`);
-        const result = await check.json();
-
-        if (result.status === "paid") {
-          clearInterval(pollInterval);
-          unlockDetailedContent();
-        } else if (result.status === "failed") {
-          clearInterval(pollInterval);
-          statusDiv.innerHTML = "❌ Payment was cancelled or failed.";
-        }
-      } catch (e) {
-        // Log polling error quietly
-        console.log("Polling error...");
-      }
-    }, 3000);
-  } catch (err) {
-    statusDiv.innerHTML = "❌ Error processing payment request.";
+      <div class="paywall" id="payBox">
+        <h4>🔒 Unlock Professional Action Plan</h4>
+        <p>Get specific law sections and step-by-step guidance.</p>
+        <p><span class="amount-badge">KSh ${currentPrice}</span></p>
+        <button class="ask-btn" style="background:var(--gold); color:black; margin-top:10px;" onclick="handlePayment()">
+          Pay via M-Pesa
+        </button>
+        <div id="pStatus" style="margin-top:10px; font-weight:bold;"></div>
+      </div>
+    `;
+  } catch (e) {
+    resDiv.innerHTML = "❌ Connection failed. Ensure server is awake.";
   }
 }
 
-function unlockDetailedContent() {
-  const display = document.getElementById("responseArea");
+async function handlePayment() {
+  const phone = prompt("Enter Safaricom Number (2547...)");
+  if (!phone) return;
   
-  // Replace the paywall with the final content
-  display.innerHTML = `
-    <div class="legal-box" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--navy);">
-      <strong>Legal Overview:</strong>
-      <p>${document.querySelector('.legal-box p').innerText}</p>
-    </div>
-    
-    <div class="unlocked-content fadeIn" style="background: #e7f9ee; border-left: 5px solid #27ae60; padding: 1.5rem; border-radius: 8px; margin-top: 20px;">
-      <h3>✅ Full Legal Answer Unlocked</h3>
-      <p>${storedPaidAnswer.replace(/\n/g, '<br>')}</p>
-    </div>
-  `;
+  const status = document.getElementById("pStatus");
+  status.innerHTML = "⏳ Sending STK Push to your phone...";
+
+  try {
+    const res = await fetch(`${API}/stkpush`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ 
+        phone: phone, 
+        amount: currentPrice // Backend will use this KSh value
+      })
+    });
+
+    const data = await res.json();
+    if (!data.checkout_id) return status.innerHTML = "❌ Push failed.";
+
+    status.innerHTML = "⏳ Enter PIN on your phone...";
+
+    const poll = setInterval(async () => {
+      const check = await fetch(`${API}/check-payment/${data.checkout_id}`);
+      const result = await check.json();
+
+      if (result.status === "paid") {
+        clearInterval(poll);
+        document.getElementById("payBox").innerHTML = `
+          <div style="background: #e7f9ee; border-left: 5px solid #27ae60; padding: 20px; text-align: left;">
+            <h3 style="margin-top:0;">✅ Full Unlocked Advice</h3>
+            <p>${storedPaidContent.replace(/\n/g, '<br>')}</p>
+          </div>
+        `;
+      } else if (result.status === "failed") {
+        clearInterval(poll);
+        status.innerHTML = "❌ Payment failed.";
+      }
+    }, 3000);
+  } catch (err) { status.innerHTML = "❌ Error."; }
 }
 </script>
 
