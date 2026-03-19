@@ -3,25 +3,24 @@ import base64
 import datetime
 import requests
 import json
-import google.generativeai as genai
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from requests.auth import HTTPBasicAuth
+from google import genai  # Latest Google AI library
 
 app = Flask(__name__)
 CORS(app)
 
 # --- CONFIGURATION ---
-# M-Pesa Keys (Pulled from Render Environment Variables)
+# M-Pesa Keys
 CONSUMER_KEY = os.getenv("CONSUMER_KEY")
 CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
-BUSINESS_SHORT_CODE = "174379"  # Sandbox Shortcode
+BUSINESS_SHORT_CODE = "174379"
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 
-# Gemini AI Key (Pulled from Render Environment Variables)
+# Gemini AI Key & Client
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 # --- HELPERS ---
 def get_access_token():
@@ -37,51 +36,37 @@ def get_access_token():
 # --- ROUTES ---
 @app.route('/')
 def home():
-    return jsonify({
-        "status": "SheriaHub API is Live", 
-        "message": "Ready for AI & M-Pesa requests!"
-    })
+    return jsonify({"status": "SheriaHub API is Live", "message": "Ready for AI & M-Pesa!"})
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     data = request.json
     user_question = data.get('question')
     
-    if not user_question:
-        return jsonify({"free_summary": "Please ask a question.", "paid_deep_dive": ""}), 400
-
-    # System Prompt tells Gemini how to behave
     prompt = f"""
-    You are 'Sheria AI', a Kenyan Legal Expert specializing in Tenant and Landlord rights.
+    You are 'Sheria AI', a Kenyan Legal Expert. 
     The user is asking: "{user_question}"
     
     Please provide your response in exactly this JSON format:
     {{
-      "free_summary": "A 1-sentence general right regarding this issue in simple terms.",
-      "paid_deep_dive": "A detailed explanation (approx 100 words) referencing Kenyan Law (e.g., Rent Restriction Act, Landlord & Tenant Bill), specific notice periods, and steps at the Rent Restriction Tribunal."
+      "free_summary": "A 1-sentence general right regarding this issue.",
+      "paid_deep_dive": "A detailed explanation referencing Kenyan Law (e.g., Rent Restriction Act) and steps at the Tribunal."
     }}
-    Rules: 
-    1. Focus only on Kenyan Law. 
-    2. Do not include markdown code blocks like ```json. 
-    3. Return ONLY the JSON object.
+    Return ONLY the JSON. No markdown.
     """
 
     try:
-        response = model.generate_content(prompt)
-        # Handle cases where Gemini might return empty text or block the response
-        if not response.text:
-            return jsonify({"free_summary": "I cannot answer that specific question.", "paid_deep_dive": "Please rephrase your legal question."})
-            
-        # Clean up text to ensure valid JSON parsing
+        # Using the latest google-genai syntax
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=prompt
+        )
+        # Clean potential markdown and parse
         clean_text = response.text.replace('```json', '').replace('```', '').strip()
-        ai_data = json.loads(clean_text)
-        return jsonify(ai_data)
+        return jsonify(json.loads(clean_text))
     except Exception as e:
-        print(f"Gemini AI Error: {e}")
-        return jsonify({
-            "free_summary": "AI is currently waking up or busy.", 
-            "paid_deep_dive": "Please try again in a few seconds."
-        }), 500
+        print(f"AI Error: {e}")
+        return jsonify({"free_summary": "AI is busy.", "paid_deep_dive": "Try again shortly."}), 500
 
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
@@ -89,11 +74,11 @@ def stk_push():
     phone_number = data.get('phone') 
     
     if not phone_number:
-        return jsonify({"CustomerMessage": "Phone number is required"}), 400
+        return jsonify({"CustomerMessage": "Phone number required"}), 400
 
     access_token = get_access_token()
     if not access_token:
-        return jsonify({"CustomerMessage": "Failed to connect to Safaricom"}), 500
+        return jsonify({"CustomerMessage": "Internal Server Error: Safaricom Connection Failed"}), 500
 
     timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     password_str = BUSINESS_SHORT_CODE + PASSKEY + timestamp
@@ -110,26 +95,24 @@ def stk_push():
         "PartyA": phone_number,
         "PartyB": BUSINESS_SHORT_CODE,
         "PhoneNumber": phone_number,
-        "CallBackURL": "[https://sheriahub.onrender.com/callback](https://sheriahub.onrender.com/callback)", 
+        "CallBackURL": "https://sheriahub.onrender.com/callback", 
         "AccountReference": "SheriaHub",
         "TransactionDesc": "Legal Info Payment"
     }
     
     try:
         response = requests.post(
-            "[https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest](https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest)",
+            "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
             json=payload,
             headers=headers
         )
         return jsonify(response.json())
     except Exception as e:
-        print(f"STK Push Error: {e}")
         return jsonify({"CustomerMessage": str(e)}), 500
 
 @app.route('/callback', methods=['POST'])
 def mpesa_callback():
-    data = request.json
-    print("M-Pesa Callback Received:", data)
+    print("M-Pesa Callback:", request.json)
     return jsonify({"ResultCode": 0, "ResultDesc": "Success"})
 
 if __name__ == '__main__':
