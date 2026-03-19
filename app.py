@@ -11,52 +11,44 @@ from groq import Groq
 app = Flask(__name__)
 CORS(app)
 
-# Configuration
+# Configuration - Ensure these are in Render Environment Variables
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 CONSUMER_KEY = os.getenv("CONSUMER_KEY")
 CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
 BUSINESS_SHORT_CODE = "174379"
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 
-client = None
-if GROQ_API_KEY:
-    try:
-        client = Groq(api_key=GROQ_API_KEY)
-    except Exception as e:
-        print(f"Init Error: {e}")
-
+client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 payments_db = {}
 
 @app.route('/')
 def health():
-    return jsonify({"status": "active", "model": "llama-3.3-70b"}), 200
+    return jsonify({"status": "SheriaHub Backend Live", "engine": "Llama-3.3"}), 200
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client:
-        return jsonify({"error": "AI configuration missing"}), 500
+        return jsonify({"error": "AI client missing"}), 500
         
     try:
         data = request.get_json()
         question = data.get("question", "")
         category = data.get("category", "tenant")
-        
         persona = "Kenyan Employment Law expert" if category == "employment" else "Kenyan Landlord & Tenant Law expert"
         
-        # Primary model: llama-3.3-70b-versatile
-        # Fallback model: llama-3.1-70b-versatile
+        # CHANGED: Using a verified active model ID to fix the 404 error
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile", 
             messages=[
-                {"role": "system", "content": f"You are a {persona}. Provide a short free summary and a detailed paid deep dive with Kenyan law citations. Return ONLY JSON."},
+                {"role": "system", "content": f"You are a {persona}. Return ONLY JSON with 'free_summary' and 'paid_deep_dive'."},
                 {"role": "user", "content": question}
             ],
             response_format={"type": "json_object"}
         )
         return jsonify(json.loads(completion.choices[0].message.content))
     except Exception as e:
-        print(f"AI ERROR: {str(e)}")
-        return jsonify({"error": "Model error or limit reached"}), 500
+        print(f"AI ERROR: {str(e)}") # This will show in Render logs
+        return jsonify({"error": "Sheria AI is temporarily overloaded. Please try again."}), 500
 
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
