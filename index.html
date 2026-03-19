@@ -6,76 +6,145 @@
 <title>SheriaHub - Tenant & Landlord Rights Kenya</title>
 
 <style>
+/* CSS Variables for easy color management in 2026 */
+:root {
+  --navy: #0a1f44;
+  --secondary-navy: #163a73;
+  --gold: #f39c12; /* That golden pop color */
+  --bg: #f5f7fa;
+  --text: #333;
+}
+
 body {
   margin: 0;
-  font-family: 'Segoe UI', sans-serif;
-  background: #f5f7fa;
-  color: #333;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
 }
 
 /* NAVBAR */
 .navbar {
-  background: #0a1f44;
+  background: var(--navy);
   color: white;
-  padding: 15px 40px;
+  padding: 1rem 10%;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+/* HERO SECTION - Now with a gold accent bar */
 .hero {
-  background: #0a1f44;
+  background: var(--navy);
   color: white;
   text-align: center;
   padding: 80px 20px;
+  position: relative;
 }
 
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 6px;
+  background: var(--gold); /* Thin gold line under hero */
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+.hero p {
+  opacity: 0.9;
+  font-size: 1.1rem;
+}
+
+/* CHAT/INPUT CONTAINER - With a glow/gold border */
 .chat-container {
   max-width: 700px;
-  margin: -50px auto 40px;
+  margin: -40px auto 40px;
   background: white;
   border-radius: 12px;
   padding: 30px;
-  box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+  border: 1px solid #e1e1e1; /* Subtle border */
+  position: relative;
+}
+
+/* Making it pop when focused */
+.chat-container:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 10px 30px rgba(243, 156, 18, 0.15); /* Gold shadow glow */
 }
 
 .input-group {
   display: flex;
   gap: 10px;
+  margin-top: 1.5rem;
 }
 
-input {
+input[type="text"] {
   flex-grow: 1;
-  padding: 12px;
+  padding: 15px;
   border-radius: 8px;
   border: 2px solid #ddd;
+  font-size: 16px;
+  transition: 0.3s;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--gold); /* Gold border on focus */
 }
 
 button {
-  padding: 12px 20px;
-  background: #0a1f44;
+  padding: 12px 25px;
+  background: var(--navy);
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
 }
 
 button:hover {
-  background: #163a73;
+  background: var(--secondary-navy);
+  transform: translateY(-1px); /* Slight lift on hover */
 }
 
-#response {
-  margin-top: 20px;
+#responseArea {
+  margin-top: 25px;
 }
 
-/* PAYWALL */
+/* PAYWALL - Now with a strong gold dotted border */
 .paywall {
-  background: #f0f7ff;
-  padding: 20px;
-  margin-top: 15px;
-  border-left: 5px solid #0a1f44;
+  background: #fffdf5; /* Very subtle gold background hint */
+  padding: 2rem;
+  margin-top: 20px;
+  border: 2px dashed var(--gold); /* Prominent gold dashed border */
+  border-radius: 8px;
+  text-align: center;
 }
 
-/* FEATURES */
+.unlock-btn {
+  background: var(--gold);
+  color: #000; /* Dark text for contrast against gold */
+  margin-top: 15px;
+}
+
+/* FEATURES - With subtle gold top borders */
 .features {
   display: flex;
   justify-content: center;
@@ -91,170 +160,219 @@ button:hover {
   border-radius: 12px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.05);
   text-align: center;
+  border-top: 4px solid #eee; /* Light border by default */
+  transition: 0.3s;
 }
 
-/* AI PREVIEW */
+.feature-box:hover {
+  border-top-color: var(--gold); /* Gold top border on hover */
+  transform: translateY(-3px);
+}
+
+/* AI PREVIEW - Restored "Coming Soon" styling with gold accents */
 .ai-preview {
   max-width: 900px;
   margin: 40px auto;
   text-align: center;
-  padding: 40px;
+  padding: 50px;
   background: #eef2f7;
   border-radius: 20px;
+  position: relative;
+  border: 1px solid #ddd;
+}
+
+.preview-badge {
+  background: var(--gold);
+  color: #000;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  position: absolute;
+  top: 15px;
+  right: 15px;
 }
 
 /* FOOTER */
 .footer {
-  background: #0a1f44;
+  background: var(--navy);
   color: white;
   text-align: center;
   padding: 30px;
   margin-top: 40px;
+  font-size: 0.9em;
+  border-top: 4px solid var(--gold); /* Gold line on footer */
+}
+
+/* Animation for unlocked content */
+.fadeIn {
+  animation: fadeInEffect 0.5s ease-in-out;
+}
+
+@keyframes fadeInEffect {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>
 </head>
 
 <body>
 
-<div class="navbar">
-  <div><strong>SheriaHub</strong></div>
-</div>
+<nav class="navbar">
+  <div class="logo">SheriaHub</div>
+  <div style="font-size: 0.9em; opacity: 0.8;">Kenya's AI Tenant Assistant</div>
+</nav>
 
-<div class="hero">
-  <h1>SheriaHub: Tenant & Landlord Rights</h1>
-  <p>Simplified Kenyan legal information powered by AI</p>
-</div>
+<header class="hero">
+  <h1>Tenant & Landlord Rights: Kenyan Law Simplified</h1>
+  <p>Get instant legal information powered by Gemini 2.5 Flash.</p>
+</header>
 
-<div class="chat-container">
-  <h2>Ask a Legal Question</h2>
-
+<main class="chat-container">
+  <h3>Ask a Legal Question</h3>
   <div class="input-group">
-    <input type="text" id="question" placeholder="e.g. eviction notice period">
-    <button onclick="getAnswer()">Ask</button>
+    <input type="text" id="userInput" placeholder="e.g. Can my landlord locking my house for rent arrears?">
+    <button onclick="getLegalAdvice()">Ask Sheria AI</button>
   </div>
 
-  <div id="response"></div>
-</div>
+  <div id="responseArea">
+    </div>
+</main>
 
-<div class="features">
+<section class="features">
   <div class="feature-box">
-    <h3>⚖️ Verified Law</h3>
-    <p>Based on Kenyan legal frameworks.</p>
-  </div>
-
-  <div class="feature-box">
-    <h3>🏛️ Tribunal Guidance</h3>
-    <p>Understand dispute resolution steps.</p>
+    <h3 style="color: var(--navy);">⚖️ Verified Law</h3>
+    <p>Based on the Rent Restriction Act and Kenyan legal framework.</p>
   </div>
 
   <div class="feature-box">
-    <h3>🔒 Secure Insights</h3>
-    <p>Unlock detailed answers via M-Pesa.</p>
+    <h3 style="color: var(--navy);">🏛️ Tribunal Guide</h3>
+    <p>Understand how to handle disputes at the Rent Tribunal Board.</p>
   </div>
-</div>
 
-<div class="ai-preview">
-  <h2>🚀 Coming Soon</h2>
-  <p>Upload your lease agreement and let AI detect unfair clauses instantly.</p>
-</div>
+  <div class="feature-box">
+    <h3 style="color: var(--navy);">🔒 Secure Access</h3>
+    <p>Unlock detailed action steps instantly via M-Pesa.</p>
+  </div>
+</section>
 
-<div class="footer">
-  <p><strong>Disclaimer:</strong> Not legal advice.</p>
-  <p>© 2026 SheriaHub Kenya</p>
-</div>
+<aside class="ai-preview">
+  <span class="preview-badge">Beta Preview</span>
+  <h2>🚀 Lease Reviewer: Coming Soon</h2>
+  <p>Upload your lease agreement and let Sheria AI detect unfair clauses instantly.</p>
+</aside>
+
+<footer class="footer">
+  <p><strong>Disclaimer:</strong> This is an AI tool providing information, not professional legal advice.</p>
+  <p>© 2026 SheriaHub Kenya | All Rights Reserved</p>
+</footer>
 
 <script>
-// Make sure this matches your Render URL
-const API = "https://sheriahub.onrender.com";
-let currentPaidAnswer = "";
-let currentFreeSummary = "";
+// --- JAVASCRIPT FIXED FOR 2026 GEMINI/M-PESAHandshake ---
+const API_BASE_URL = "https://sheriahub.onrender.com"; // YOUR RENDER URL
+let storedPaidAnswer = "";
 
-async function getAnswer() {
-  const q = document.getElementById("question").value;
-  const resDiv = document.getElementById("response");
+async function getLegalAdvice() {
+  const inputField = document.getElementById("userInput");
+  const question = inputField.value;
+  const display = document.getElementById("responseArea");
 
-  if (!q) return;
+  if (!question) return alert("Please enter a question first.");
 
-  resDiv.innerHTML = "⏳ Consulting the statutes... please wait.";
+  display.innerHTML = "<p style='text-align:center;'>⏳ Sheria AI is consulting the statutes... please wait.</p>";
 
   try {
-    const res = await fetch(`${API}/ask-ai`, {
+    const response = await fetch(`${API_BASE_URL}/ask-ai`, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ question: q })
+      body: JSON.stringify({ question })
     });
 
-    const data = await res.json();
+    const data = await response.json();
     
-    // Store both parts so we can rebuild the UI later
-    currentPaidAnswer = data.paid_deep_dive;
-    currentFreeSummary = data.free_summary;
+    // Store the paid part in the browser (Note: Security warning from earlier still applies)
+    storedPaidAnswer = data.paid_deep_dive;
 
-    resDiv.innerHTML = `
-      <p><strong>${currentFreeSummary}</strong></p>
+    display.innerHTML = `
+      <div class="legal-box" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--navy);">
+        <strong>Legal Overview:</strong>
+        <p>${data.free_summary}</p>
+      </div>
 
       <div class="paywall">
-        <p>🔒 Unlock full legal answer (KSh 20)</p>
-        <button onclick="pay()">Pay with M-Pesa</button>
-        <div id="payStatus" style="margin-top: 10px; font-weight: bold;"></div>
+        <h4>🔓 Unlock the Full Legal Deep-Dive (KSh 20)</h4>
+        <p>includes specific citations from the Rent Restriction Act and step-by-step tribunal procedures.</p>
+        <button class="unlock-btn" onclick="initiateUnlock()">Pay with M-Pesa</button>
+        <div id="payStatus" style="margin-top: 10px; font-weight: bold; color: var(--gold);"></div>
       </div>
     `;
   } catch (err) {
-    resDiv.innerHTML = "❌ Error connecting to server. Is the backend live?";
+    display.innerHTML = "<p style='color:red; text-align:center;'>❌ System connection error. Ensure the Render backend is live.</p>";
   }
 }
 
-async function pay() {
-  const phone = prompt("Enter phone (e.g. 254712345678)");
-  if (!phone) return;
+async function initiateUnlock() {
+  const phoneNum = prompt("Enter M-Pesa Phone Number (Format: 2547XXXXXXXX)");
+  if (!phoneNum) return;
   
   const statusDiv = document.getElementById("payStatus");
-  statusDiv.innerHTML = "⏳ Initiating STK Push...";
+  statusDiv.innerHTML = "⏳ Initiating STK Push... Check phone.";
 
   try {
-    const res = await fetch(`${API}/stkpush`, {
+    const res = await fetch(`${API_BASE_URL}/stkpush`, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ phone })
+      body: JSON.stringify({ phone: phoneNum })
     });
 
     const data = await res.json();
     
     if (data.error || !data.checkout_id) {
-      statusDiv.innerHTML = "❌ Failed to send STK Push. Check your number.";
+      statusDiv.innerHTML = "❌ Failed to send STK Push. Try again.";
       return;
     }
 
     const checkoutId = data.checkout_id;
-    statusDiv.innerHTML = "⏳ Waiting for PIN entry on your phone...";
+    statusDiv.innerHTML = "⏳ Waiting for you to enter M-Pesa PIN on your phone...";
 
-    // Polling the backend for payment status
-    const interval = setInterval(async () => {
+    // Start polling the backend for payment status using CheckoutRequestID
+    const pollInterval = setInterval(async () => {
       try {
-        const check = await fetch(`${API}/check-payment/${checkoutId}`);
+        const check = await fetch(`${API_BASE_URL}/check-payment/${checkoutId}`);
         const result = await check.json();
 
         if (result.status === "paid") {
-          clearInterval(interval);
-          // Re-render the response area with the full content
-          document.getElementById("response").innerHTML = `
-            <p><strong>${currentFreeSummary}</strong></p>
-            <div style="background: #e7f9ee; border-left: 5px solid #27ae60; padding: 20px; border-radius: 8px; margin-top: 15px;">
-              <h3>✅ Full Legal Answer Unlocked</h3>
-              <p>${currentPaidAnswer.replace(/\n/g, '<br>')}</p>
-            </div>
-          `;
+          clearInterval(pollInterval);
+          unlockDetailedContent();
         } else if (result.status === "failed") {
-          clearInterval(interval);
-          statusDiv.innerHTML = "❌ Payment failed or cancelled.";
+          clearInterval(pollInterval);
+          statusDiv.innerHTML = "❌ Payment was cancelled or failed.";
         }
       } catch (e) {
+        // Log polling error quietly
         console.log("Polling error...");
       }
     }, 3000);
   } catch (err) {
     statusDiv.innerHTML = "❌ Error processing payment request.";
   }
+}
+
+function unlockDetailedContent() {
+  const display = document.getElementById("responseArea");
+  
+  // Replace the paywall with the final content
+  display.innerHTML = `
+    <div class="legal-box" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--navy);">
+      <strong>Legal Overview:</strong>
+      <p>${document.querySelector('.legal-box p').innerText}</p>
+    </div>
+    
+    <div class="unlocked-content fadeIn" style="background: #e7f9ee; border-left: 5px solid #27ae60; padding: 1.5rem; border-radius: 8px; margin-top: 20px;">
+      <h3>✅ Full Legal Answer Unlocked</h3>
+      <p>${storedPaidAnswer.replace(/\n/g, '<br>')}</p>
+    </div>
+  `;
 }
 </script>
 
