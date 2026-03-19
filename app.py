@@ -6,69 +6,48 @@ import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from requests.auth import HTTPBasicAuth
-from google import genai
+from google import genai  # 2026 Standard SDK
 from google.genai import types
 
 app = Flask(__name__)
 CORS(app)
 
-# =========================
-# CONFIGURATION
-# =========================
+# --- Config ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 CONSUMER_KEY = os.getenv("CONSUMER_KEY")
 CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
-
-# M-Pesa Sandbox Credentials
 BUSINESS_SHORT_CODE = "174379"
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 
-# =========================
-# AI INITIALIZATION (2026 SDK)
-# =========================
+# --- AI Client ---
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
-payments = {} # Temporary store for demo/testing
-
-@app.route('/')
-def health():
-    return jsonify({"status": "SheriaHub 2026 Online", "model": "Gemini 2.5 Flash"})
+payments = {} 
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    if not client:
-        return jsonify({"error": "AI not configured"}), 500
-    
+    if not client: return jsonify({"error": "AI Keys Missing"}), 500
     try:
         data = request.get_json()
         question = data.get("question", "")
-
         prompt = f"""
-        Role: Kenyan Legal Expert (Rent Restriction Act).
-        Return ONLY valid JSON. No markdown.
+        Role: Kenyan Legal Expert (Tenant/Landlord Law).
+        Return ONLY valid JSON.
         {{
-          "free_summary": "2-sentence legal overview.",
-          "paid_deep_dive": "Full legal steps and citations."
+          "free_summary": "Short 2-sentence legal overview.",
+          "paid_deep_dive": "Full legal steps with Kenyan law citations."
         }}
         Question: {question}
         """
-
-        # Gemini 2.5 Flash is the 2026 stable workhorse
+        # Switching to the 2026 stable workhorse: gemini-2.5-flash
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type='application/json',
-                temperature=0.2
-            )
+            config=types.GenerateContentConfig(response_mime_type='application/json')
         )
-        
         return jsonify(json.loads(response.text))
     except Exception as e:
-        return jsonify({"free_summary": "System busy.", "paid_deep_dive": str(e)})
+        return jsonify({"free_summary": "System error.", "paid_deep_dive": str(e)}), 500
 
-# =========================
-# M-PESA STK PUSH LOGIC
-# =========================
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
@@ -76,50 +55,36 @@ def stk_push():
         phone = data.get("phone", "").strip().replace("+", "")
         if phone.startswith("0"): phone = "254" + phone[1:]
 
-        # Get OAuth Token
-        auth_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-        auth_res = requests.get(auth_url, auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET))
+        auth_res = requests.get("https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials", 
+                                auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET))
         token = auth_res.json().get("access_token")
 
-        # Payload
         timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         password = base64.b64encode((BUSINESS_SHORT_CODE + PASSKEY + timestamp).encode()).decode()
 
-        stk_payload = {
-            "BusinessShortCode": BUSINESS_SHORT_CODE,
-            "Password": password,
-            "Timestamp": timestamp,
-            "TransactionType": "CustomerPayBillOnline",
-            "Amount": 1,
-            "PartyA": phone,
-            "PartyB": BUSINESS_SHORT_CODE,
-            "PhoneNumber": phone,
-            "CallBackURL": "https://sheriahub.onrender.com/callback",
-            "AccountReference": "SheriaHub",
-            "TransactionDesc": "Legal Info"
+        payload = {
+            "BusinessShortCode": BUSINESS_SHORT_CODE, "Password": password, "Timestamp": timestamp,
+            "TransactionType": "CustomerPayBillOnline", "Amount": 1, "PartyA": phone, "PartyB": BUSINESS_SHORT_CODE,
+            "PhoneNumber": phone, "CallBackURL": "https://sheriahub.onrender.com/callback",
+            "AccountReference": "SheriaHub", "TransactionDesc": "Legal Info"
         }
 
-        res = requests.post(
-            "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
-            json=stk_payload,
-            headers={"Authorization": f"Bearer {token}"}
-        )
+        res = requests.post("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest", 
+                             json=payload, headers={"Authorization": f"Bearer {token}"})
         
-        checkout_id = res.json().get("CheckoutRequestID")
-        if checkout_id:
-            payments[checkout_id] = "pending"
-            return jsonify({"checkout_id": checkout_id})
-        return jsonify({"error": "Failed"}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        cid = res.json().get("CheckoutRequestID")
+        if cid:
+            payments[cid] = "pending"
+            return jsonify({"checkout_id": cid})
+        return jsonify({"error": "Push failed"}), 400
+    except Exception as e: return jsonify({"error": str(e)}), 500
 
 @app.route('/callback', methods=['POST'])
 def callback():
     data = request.get_json()
     stk = data.get("Body", {}).get("stkCallback", {})
     cid = stk.get("CheckoutRequestID")
-    if cid:
-        payments[cid] = "paid" if stk.get("ResultCode") == 0 else "failed"
+    if cid: payments[cid] = "paid" if stk.get("ResultCode") == 0 else "failed"
     return jsonify({"ResultCode": 0})
 
 @app.route('/check-payment/<cid>')
