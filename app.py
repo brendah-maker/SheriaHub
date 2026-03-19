@@ -6,85 +6,68 @@ import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from requests.auth import HTTPBasicAuth
-from google import genai  # Latest Google AI library
+from google import genai
 
 app = Flask(__name__)
 CORS(app)
 
 # --- CONFIGURATION ---
-# M-Pesa Keys
 CONSUMER_KEY = os.getenv("CONSUMER_KEY")
 CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
 BUSINESS_SHORT_CODE = "174379"
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
-
-# Gemini AI Key & Client
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Initialize Gemini
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# --- HELPERS ---
 def get_access_token():
+    # Debug: Check if keys exist
+    if not CONSUMER_KEY or not CONSUMER_SECRET:
+        print("ERROR: CONSUMER_KEY or CONSUMER_SECRET is missing in Render Env!")
+        return None
+        
     api_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
     try:
         r = requests.get(api_url, auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET))
-        r.raise_for_status()
+        if r.status_code != 200:
+            print(f"Safaricom Auth Failed: {r.status_code} - {r.text}")
+            return None
         return r.json().get('access_token')
     except Exception as e:
-        print(f"Safaricom Token Error: {e}")
+        print(f"Token Exception: {e}")
         return None
 
-# --- ROUTES ---
 @app.route('/')
 def home():
-    return jsonify({"status": "SheriaHub API is Live", "message": "Ready for AI & M-Pesa!"})
+    return jsonify({"status": "SheriaHub Live", "ai_ready": bool(GEMINI_API_KEY)})
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    data = request.json
-    user_question = data.get('question')
+    user_question = request.json.get('question')
+    print(f"AI Request Received: {user_question}")
     
-    prompt = f"""
-    You are 'Sheria AI', a Kenyan Legal Expert. 
-    The user is asking: "{user_question}"
-    
-    Please provide your response in exactly this JSON format:
-    {{
-      "free_summary": "A 1-sentence general right regarding this issue.",
-      "paid_deep_dive": "A detailed explanation referencing Kenyan Law (e.g., Rent Restriction Act) and steps at the Tribunal."
-    }}
-    Return ONLY the JSON. No markdown.
-    """
+    prompt = f"You are a Kenyan Legal Expert. Answer this JSON only: {{'free_summary': '...', 'paid_deep_dive': '...'}}. Question: {user_question}"
 
     try:
-        # Using the latest google-genai syntax
-        response = client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=prompt
-        )
-        # Clean potential markdown and parse
+        response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
         clean_text = response.text.replace('```json', '').replace('```', '').strip()
         return jsonify(json.loads(clean_text))
     except Exception as e:
         print(f"AI Error: {e}")
-        return jsonify({"free_summary": "AI is busy.", "paid_deep_dive": "Try again shortly."}), 500
+        return jsonify({"free_summary": "AI Error", "paid_deep_dive": str(e)}), 500
 
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
-    data = request.json
-    phone_number = data.get('phone') 
+    phone = request.json.get('phone')
+    print(f"STK Push Request for: {phone}")
     
-    if not phone_number:
-        return jsonify({"CustomerMessage": "Phone number required"}), 400
-
     access_token = get_access_token()
     if not access_token:
-        return jsonify({"CustomerMessage": "Internal Server Error: Safaricom Connection Failed"}), 500
+        return jsonify({"CustomerMessage": "Failed to login to M-Pesa. Check Render Env Keys."}), 500
 
     timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-    password_str = BUSINESS_SHORT_CODE + PASSKEY + timestamp
-    password = base64.b64encode(password_str.encode()).decode('utf-8')
-    
-    headers = {"Authorization": f"Bearer {access_token}"}
+    password = base64.b64encode((BUSINESS_SHORT_CODE + PASSKEY + timestamp).encode()).decode('utf-8')
     
     payload = {
         "BusinessShortCode": BUSINESS_SHORT_CODE,
@@ -92,28 +75,21 @@ def stk_push():
         "Timestamp": timestamp,
         "TransactionType": "CustomerPayBillOnline",
         "Amount": 1,
-        "PartyA": phone_number,
+        "PartyA": phone,
         "PartyB": BUSINESS_SHORT_CODE,
-        "PhoneNumber": phone_number,
+        "PhoneNumber": phone,
         "CallBackURL": "https://sheriahub.onrender.com/callback", 
         "AccountReference": "SheriaHub",
-        "TransactionDesc": "Legal Info Payment"
+        "TransactionDesc": "Legal Info"
     }
     
     try:
-        response = requests.post(
-            "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
-            json=payload,
-            headers=headers
-        )
-        return jsonify(response.json())
+        res = requests.post("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest", 
+                            json=payload, 
+                            headers={"Authorization": f"Bearer {access_token}"})
+        return jsonify(res.json())
     except Exception as e:
         return jsonify({"CustomerMessage": str(e)}), 500
-
-@app.route('/callback', methods=['POST'])
-def mpesa_callback():
-    print("M-Pesa Callback:", request.json)
-    return jsonify({"ResultCode": 0, "ResultDesc": "Success"})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
