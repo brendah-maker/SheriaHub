@@ -10,16 +10,17 @@ from google import genai
 from google.genai import types
 
 app = Flask(__name__)
-CORS(app)
+# Crucial: This allows your GitHub site to talk to your Render server without being blocked
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- CONFIGURATION ---
+# --- CONFIGURATION (Ensure these are in Render Environment Variables) ---
 CONSUMER_KEY = os.getenv("CONSUMER_KEY")
 CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
 BUSINESS_SHORT_CODE = "174379"
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Initialize the 2026 Gemini Client
+# Initialize Gemini Client (Standard for 2026)
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 def get_access_token():
@@ -27,63 +28,52 @@ def get_access_token():
     try:
         r = requests.get(api_url, auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET))
         if r.status_code != 200:
-            print(f"SAFARICOM AUTH ERROR: {r.status_code} - {r.text}")
+            print(f"SAFARICOM LOGIN ERROR: {r.status_code} - {r.text}")
             return None
         return r.json().get('access_token')
     except Exception as e:
-        print(f"MPESA TOKEN EXCEPTION: {e}")
+        print(f"TOKEN EXCEPTION: {e}")
         return None
 
 @app.route('/')
 def home():
-    return jsonify({"status": "SheriaHub API is Online", "ai_check": "Ready" if GEMINI_API_KEY else "Missing API Key"})
+    return jsonify({"status": "SheriaHub API is Live", "ai": bool(GEMINI_API_KEY)})
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     data = request.json
-    user_question = data.get('question', '')
-    print(f"--- NEW REQUEST: {user_question} ---")
+    user_question = data.get('question', 'Tell me about Kenyan law.')
+    print(f"Processing: {user_question}")
     
-    # Prompting for a clean JSON response
-    prompt = f"""
-    Role: Kenyan Legal Expert.
-    User Question: {user_question}
-    Return ONLY a JSON object with these keys:
-    'free_summary': A 1-sentence legal right.
-    'paid_deep_dive': A detailed explanation referencing Kenyan statutes.
-    """
+    prompt = f"Role: Kenyan Legal Expert. Question: {user_question}. Return ONLY JSON: {{'free_summary': '...', 'paid_deep_dive': '...'}}"
 
     try:
-        # Use gemini-3-flash-preview (The 2026 high-speed standard)
-        # We also disable safety filters that often block legal advice
+        # Using gemini-3-flash-preview (The 2026 stable version)
         response = client.models.generate_content(
             model="gemini-3-flash-preview",
             contents=prompt,
             config=types.GenerateContentConfig(
                 safety_settings=[
                     types.SafetySetting(category='HARM_CATEGORY_HATE_SPEECH', threshold='BLOCK_NONE'),
-                    types.SafetySetting(category='HARM_CATEGORY_DANGEROUS_CONTENT', threshold='BLOCK_NONE'),
-                    types.SafetySetting(category='HARM_CATEGORY_HARASSMENT', threshold='BLOCK_NONE'),
-                    types.SafetySetting(category='HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold='BLOCK_NONE'),
+                    types.SafetySetting(category='HARM_CATEGORY_DANGEROUS_CONTENT', threshold='BLOCK_NONE')
                 ]
             )
         )
         
         if not response.text:
-            print("AI ERROR: Empty response from Google")
-            return jsonify({"free_summary": "AI is silent.", "paid_deep_dive": "Empty response."}), 500
+            raise ValueError("AI returned an empty string.")
 
-        # Strip markdown if Gemini adds it
-        clean_json = response.text.replace('```json', '').replace('```', '').strip()
-        print(f"AI SUCCESS: {clean_json[:50]}...")
-        return jsonify(json.loads(clean_json))
+        # Clean JSON to prevent SyntaxErrors in browser
+        clean_text = response.text.replace('```json', '').replace('```', '').strip()
+        return jsonify(json.loads(clean_text))
 
     except Exception as e:
         print(f"AI CRASHED: {str(e)}")
+        # Always return valid JSON to avoid "Unexpected end of input" error in JS
         return jsonify({
-            "free_summary": "Connection to Sheria AI failed.",
-            "paid_deep_dive": f"Technical Detail: {str(e)}"
-        }), 500
+            "free_summary": "Sheria AI is temporarily offline.",
+            "paid_deep_dive": f"Developer Log: {str(e)}"
+        }), 200 # Returning 200 keeps the frontend from crashing
 
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
@@ -91,7 +81,7 @@ def stk_push():
     access_token = get_access_token()
     
     if not access_token:
-        return jsonify({"CustomerMessage": "Safaricom Authentication Failed. Check Keys."}), 500
+        return jsonify({"CustomerMessage": "Safaricom login failed."}), 401
 
     timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     password = base64.b64encode((BUSINESS_SHORT_CODE + PASSKEY + timestamp).encode()).decode('utf-8')
@@ -115,8 +105,7 @@ def stk_push():
                             json=payload, headers={"Authorization": f"Bearer {access_token}"})
         return jsonify(res.json())
     except Exception as e:
-        print(f"STK PUSH ERROR: {e}")
-        return jsonify({"CustomerMessage": "STK Push failed to send."}), 500
+        return jsonify({"CustomerMessage": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
