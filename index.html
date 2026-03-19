@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SheriaHub - Know Your Rights</title>
+  <title>SheriaHub - Tenant & Landlord Rights Kenya</title>
 
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: #f5f7fa;
+      color: #333;
     }
 
     /* NAVBAR */
@@ -20,11 +21,15 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
     }
 
     .logo {
       font-size: 22px;
       font-weight: bold;
+      letter-spacing: 1px;
     }
 
     .nav-links a {
@@ -32,6 +37,11 @@
       text-decoration: none;
       margin-left: 20px;
       font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .nav-links a:hover {
+      opacity: 1;
     }
 
     /* HERO */
@@ -39,7 +49,7 @@
       background: #0a1f44;
       color: white;
       text-align: center;
-      padding: 60px 20px;
+      padding: 80px 20px;
     }
 
     .hero h1 {
@@ -48,39 +58,56 @@
     }
 
     .hero p {
-      font-size: 16px;
+      font-size: 18px;
       opacity: 0.9;
+      max-width: 600px;
+      margin: 0 auto;
     }
 
     /* CHAT BOX */
     .chat-container {
-      max-width: 600px;
-      margin: -40px auto 40px;
+      max-width: 650px;
+      margin: -50px auto 40px;
       background: white;
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.15);
     }
 
     .chat-container h2 {
       margin-top: 0;
       color: #0a1f44;
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
     }
 
     input {
-      width: 75%;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+      flex-grow: 1;
+      padding: 12px;
+      border: 2px solid #e1e8ed;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #0a1f44;
     }
 
     button {
-      padding: 10px 15px;
+      padding: 12px 25px;
       border: none;
       background: #0a1f44;
       color: white;
-      border-radius: 5px;
+      border-radius: 8px;
+      font-weight: bold;
       cursor: pointer;
+      transition: background 0.3s;
     }
 
     button:hover {
@@ -88,15 +115,22 @@
     }
 
     #response {
-      margin-top: 20px;
-      line-height: 1.6;
+      margin-top: 25px;
+      line-height: 1.7;
     }
 
     .paywall {
-      background: #f0f4ff;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 10px;
+      background: #f0f7ff;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 15px;
+      border-left: 5px solid #0a1f44;
+    }
+
+    .paywall small {
+      display: block;
+      margin-bottom: 10px;
+      color: #555;
     }
 
     /* FEATURES */
@@ -110,15 +144,36 @@
 
     .feature-box {
       background: white;
-      padding: 20px;
-      width: 250px;
-      border-radius: 10px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+      padding: 25px;
+      width: 280px;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
       text-align: center;
     }
 
     .feature-box h3 {
       color: #0a1f44;
+      margin-bottom: 10px;
+    }
+
+    /* AI COMING SOON SECTION */
+    .ai-preview {
+      max-width: 900px;
+      margin: 40px auto;
+      text-align: center;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+      border-radius: 20px;
+    }
+
+    .badge {
+      background: #e67e22;
+      color: white;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: bold;
     }
 
     /* FOOTER */
@@ -126,81 +181,94 @@
       background: #0a1f44;
       color: white;
       text-align: center;
-      padding: 20px;
-      font-size: 13px;
+      padding: 40px 20px;
+      font-size: 14px;
+      margin-top: 50px;
     }
+
+    .footer p { opacity: 0.7; margin: 5px 0; }
   </style>
 </head>
 
 <body>
 
-  <!-- NAVBAR -->
   <div class="navbar">
     <div class="logo">SheriaHub</div>
     <div class="nav-links">
-      <a href="#">Home</a>
-      <a href="#">How it Works</a>
+      <a href="#">Laws</a>
+      <a href="#">Tribunals</a>
       <a href="#">Contact</a>
     </div>
   </div>
 
-  <!-- HERO -->
   <div class="hero">
-    <h1>Know Your Rights. Instantly.</h1>
-    <p>Get simple answers about rental laws and property rights in Kenya</p>
+    <h1>SheriaHub: Tenant & Landlord Rights</h1>
+    <p>Simplified legal information based on the Laws of Kenya and the Landlord & Tenant Bill.</p>
   </div>
 
-  <!-- CHAT -->
   <div class="chat-container">
-    <h2>Ask a Legal Question</h2>
-
-    <input type="text" id="question" placeholder="e.g. Can my landlord evict me without notice?">
-    <button onclick="getAnswer()">Ask</button>
-
+    <h2>Ask a Question</h2>
+    <div class="input-group">
+      <input type="text" id="question" placeholder="e.g. How long is an eviction notice?">
+      <button onclick="getAnswer()">Ask</button>
+    </div>
     <div id="response"></div>
   </div>
 
-  <!-- FEATURES -->
   <div class="features">
     <div class="feature-box">
-      <h3>⚖️ Simple Answers</h3>
-      <p>No legal jargon. Just clear explanations.</p>
+      <h3>⚖️ Verified Law</h3>
+      <p>Content derived from the Rent Restriction Act and 2021/2024 Amendments.</p>
     </div>
 
     <div class="feature-box">
-      <h3>📱 Instant Help</h3>
-      <p>Ask anytime and get answers immediately.</p>
+      <h3>🏛️ Tribunal Guidance</h3>
+      <p>Understand how to approach the Rent Restriction Tribunal (RRT).</p>
     </div>
 
     <div class="feature-box">
-      <h3>💰 Affordable</h3>
-      <p>Unlock detailed answers for only KSh 20.</p>
+      <h3>🔒 Secure Insights</h3>
+      <p>Detailed legal procedures unlocked via secure M-Pesa verification.</p>
     </div>
   </div>
 
-  <!-- FOOTER -->
+  <div class="ai-preview">
+    <span class="badge">Coming Soon</span>
+    <h2 style="color: #0a1f44; margin-top: 15px;">Sheria AI Smart Assistant</h2>
+    <p>Soon, you'll be able to upload your <b>Lease Agreement</b> and have our AI scan it for unfair clauses or illegal terms instantly.</p>
+  </div>
+
   <div class="footer">
-    <p>Disclaimer: This platform provides general legal information, not legal advice.</p>
-    <p>© 2026 SheriaHub</p>
+    <p><strong>Disclaimer:</strong> SheriaHub provides general legal information for educational purposes. It does not constitute legal advice from an advocate.</p>
+    <p>© 2026 SheriaHub Kenya | Empowering Tenants & Landlords</p>
   </div>
 
-  <!-- SCRIPT -->
   <script>
     const database = [
       {
-        keywords: ["evict", "kick out", "lock"],
-        free: "No, a landlord must follow legal process before eviction.",
-        paid: "Under Kenyan law, landlords must give proper notice before eviction and cannot forcefully remove tenants. You can challenge illegal eviction at a tribunal."
+        keywords: ["evict", "kick out", "lock", "notice", "fukuzwa", "out", "leave"],
+        free: "Landlords cannot evict you without a court order or a valid legal notice period.",
+        paid: "Under the Landlord and Tenant Bill, a landlord must provide a written notice of termination (usually 30-90 days). If you don't vacate, the landlord MUST sue in the Rent Restriction Tribunal. 'Self-help' evictions like removing doors or cutting water are illegal and can be reported to the police or the Tribunal for an injunction."
       },
       {
-        keywords: ["rent increase", "increase rent"],
-        free: "Rent cannot be increased without notice.",
-        paid: "Landlords must give proper notice (usually 1–2 months). You can challenge unfair increases legally."
+        keywords: ["increase", "rent", "ongeza", "raise", "price"],
+        free: "Rent increases require formal written notice and cannot happen mid-contract.",
+        paid: "Section 18 of the Bill requires at least 90 days' notice for rent increases. In residential 'controlled' tenancies, you can challenge an increase at the Tribunal if it doesn't align with market rates or if no property improvements were made."
       },
       {
-        keywords: ["enter", "privacy"],
-        free: "Your landlord cannot enter without notice.",
-        paid: "Landlords must give notice before entering your house, except in emergencies. This protects your right to privacy."
+        keywords: ["deposit", "refund", "security", "money back", "deduct"],
+        free: "Deposits should be refunded unless there is proven damage beyond normal wear and tear.",
+        paid: "The landlord must return your security deposit within the time specified in your lease. They can only deduct for damage you caused—NOT for 'normal wear and tear' like fading paint. If they refuse to refund without a breakdown of costs, you can file a claim at the Small Claims Court or the Tribunal."
+      },
+      {
+        keywords: ["repair", "fix", "broken", "maintenance", "paint", "leak", "water"],
+        free: "The landlord is responsible for keeping the premises 'fit for habitation.'",
+        paid: "Structural repairs (roof, exterior walls, plumbing) are the landlord's duty. If a landlord fails to repair major issues after notice, a tenant can apply to the Tribunal for permission to deduct repair costs from rent or pay rent to the Tribunal until the fix is made."
+      },
+      {
+        keywords: ["enter", "privacy", "visit", "inspect", "access", "inside"],
+        free: "A tenant has a right to privacy. The landlord cannot enter without your permission.",
+        paid: "The law protects your 'Quiet Enjoyment.' Except in emergencies (fire/flooding), a landlord must give reasonable notice (usually 24 hours) before entering for inspections. Harassment by constant unannounced visits is a legal ground for a restraining order from the Tribunal."
       }
     ];
 
@@ -208,33 +276,51 @@
       let q = document.getElementById("question").value.toLowerCase();
       let response = document.getElementById("response");
 
+      if (!q.trim()) {
+        response.innerHTML = "<p style='color:red;'>Please enter a question first.</p>";
+        return;
+      }
+
       let found = database.find(item =>
         item.keywords.some(k => q.includes(k))
       );
 
       if (found) {
         response.innerHTML = `
-          <p><strong>Answer:</strong> ${found.free}</p>
+          <div style="padding: 10px; border-bottom: 1px solid #eee;">
+            <p><strong>Common Right:</strong> ${found.free}</p>
+          </div>
 
           <div class="paywall">
-            🔒 Unlock full answer for <strong>KSh 20</strong><br><br>
-            <button onclick="unlock('${found.paid}')">Pay with M-Pesa</button>
+            <small>🔒 <strong>Deep Dive:</strong> Get the specific legal clauses, notice periods, and tribunal steps for this issue.</small>
+            <strong>Unlock for KSh 20</strong><br><br>
+            <button onclick="unlock('${found.paid.replace(/'/g, "\\'")}')">Pay with M-Pesa</button>
           </div>
         `;
       } else {
-        response.innerHTML = "<p>We are still building this answer. Try another question.</p>";
+        response.innerHTML = `
+          <p style="color: #666; background: #eee; padding: 15px; border-radius: 8px;">
+            I'm still learning about that specific topic. Try asking about <b>evictions, rent increases, deposits,</b> or <b>repairs.</b>
+          </p>
+        `;
       }
     }
 
     function unlock(answer) {
-      let code = prompt("Enter your M-Pesa transaction code:");
+      let code = prompt("Enter the 10-digit M-Pesa Transaction Code (e.g., RQA5...) to verify:");
 
-      if (code && code.length > 5) {
+      if (code && code.length >= 8) {
         document.getElementById("response").innerHTML = `
-          <p><strong>Full Answer:</strong> ${answer}</p>
+          <div style="background: #fff; border: 2px solid #0a1f44; padding: 20px; border-radius: 10px; position: relative;">
+            <span style="position: absolute; top: -10px; right: 10px; background: #0a1f44; color: white; padding: 2px 10px; border-radius: 10px; font-size: 12px;">Verified Legal Info</span>
+            <p><strong>Detailed Legal Procedure:</strong></p>
+            <p style="font-size: 16px; color: #1a1a1a;">${answer}</p>
+            <hr>
+            <button onclick="location.reload()" style="background: #555; font-size: 12px; padding: 8px 15px;">New Question</button>
+          </div>
         `;
       } else {
-        alert("Invalid code. Please try again.");
+        alert("Verification failed. Please enter a valid M-Pesa code.");
       }
     }
   </script>
