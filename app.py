@@ -3,110 +3,194 @@ import base64
 import datetime
 import requests
 import json
+import traceback
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from requests.auth import HTTPBasicAuth
 from google import genai
 from google.genai import types
 
+# ================================
+# APP SETUP
+# ================================
 app = Flask(__name__)
-# Crucial: This allows your GitHub site to talk to your Render server without being blocked
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- CONFIGURATION (Ensure these are in Render Environment Variables) ---
+# ================================
+# ENV VARIABLES
+# ================================
 CONSUMER_KEY = os.getenv("CONSUMER_KEY")
 CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
-BUSINESS_SHORT_CODE = "174379"
-PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Initialize Gemini Client (Standard for 2026)
-client = genai.Client(api_key=GEMINI_API_KEY)
+BUSINESS_SHORT_CODE = "174379"
+PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 
-def get_access_token():
-    api_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-    try:
-        r = requests.get(api_url, auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET))
-        if r.status_code != 200:
-            print(f"SAFARICOM LOGIN ERROR: {r.status_code} - {r.text}")
-            return None
-        return r.json().get('access_token')
-    except Exception as e:
-        print(f"TOKEN EXCEPTION: {e}")
-        return None
+# ================================
+# INIT GEMINI
+# ================================
+client = None
+if GEMINI_API_KEY:
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
+# ================================
+# HEALTH CHECK
+# ================================
 @app.route('/')
 def home():
-    return jsonify({"status": "SheriaHub API is Live", "ai": bool(GEMINI_API_KEY)})
+    return jsonify({
+        "status": "SheriaHub API is Live",
+        "ai_connected": bool(GEMINI_API_KEY)
+    })
 
+# ================================
+# SAFARICOM TOKEN
+# ================================
+def get_access_token():
+    url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+    try:
+        res = requests.get(url, auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET))
+
+        if res.status_code != 200:
+            print(f"❌ SAFARICOM ERROR: {res.status_code} - {res.text}")
+            return None
+
+        return res.json().get("access_token")
+
+    except Exception as e:
+        print(f"❌ TOKEN ERROR: {str(e)}")
+        return None
+
+# ================================
+# AI ENDPOINT
+# ================================
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    data = request.json
-    user_question = data.get('question', 'Tell me about Kenyan law.')
-    print(f"Processing: {user_question}")
-    
-    prompt = f"Role: Kenyan Legal Expert. Question: {user_question}. Return ONLY JSON: {{'free_summary': '...', 'paid_deep_dive': '...'}}"
-
     try:
-        # Using gemini-3-flash-preview (The 2026 stable version)
-        response = client.models.generate_content(
-            model="gemini-3-flash-preview",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                safety_settings=[
-                    types.SafetySetting(category='HARM_CATEGORY_HATE_SPEECH', threshold='BLOCK_NONE'),
-                    types.SafetySetting(category='HARM_CATEGORY_DANGEROUS_CONTENT', threshold='BLOCK_NONE')
-                ]
-            )
-        )
-        
-        if not response.text:
-            raise ValueError("AI returned an empty string.")
+        data = request.get_json()
+        user_question = data.get("question", "Explain tenant rights in Kenya")
 
-        # Clean JSON to prevent SyntaxErrors in browser
-        clean_text = response.text.replace('```json', '').replace('```', '').strip()
-        return jsonify(json.loads(clean_text))
+        print(f"📩 Question: {user_question}")
+
+        if not client:
+            return jsonify({
+                "free_summary": "AI service is not configured.",
+                "paid_deep_dive": "Missing GEMINI_API_KEY"
+            })
+
+        # ✅ STRICT JSON PROMPT
+        prompt = f"""
+You are a Kenyan legal expert.
+
+Answer the question below and return ONLY valid JSON.
+
+Format:
+{{
+  "free_summary": "Short simple answer",
+  "paid_deep_dive": "Detailed legal explanation with references to Kenyan law"
+}}
+
+Question: {user_question}
+"""
+
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=prompt
+        )
+
+        if not response.text:
+            raise ValueError("Empty AI response")
+
+        # ✅ CLEAN RESPONSE
+        clean_text = response.text.replace("```json", "").replace("```", "").strip()
+
+        try:
+            parsed = json.loads(clean_text)
+        except:
+            # fallback if AI messes up JSON
+            parsed = {
+                "free_summary": clean_text[:200],
+                "paid_deep_dive": clean_text
+            }
+
+        return jsonify(parsed)
 
     except Exception as e:
-        print(f"AI CRASHED: {str(e)}")
-        # Always return valid JSON to avoid "Unexpected end of input" error in JS
-        return jsonify({
-            "free_summary": "Sheria AI is temporarily offline.",
-            "paid_deep_dive": f"Developer Log: {str(e)}"
-        }), 200 # Returning 200 keeps the frontend from crashing
+        print("❌ AI ERROR:")
+        print(traceback.format_exc())
 
+        return jsonify({
+            "free_summary": "Sheria AI is temporarily unavailable.",
+            "paid_deep_dive": str(e)
+        }), 200
+
+# ================================
+# MPESA STK PUSH
+# ================================
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
-    phone = request.json.get('phone')
-    access_token = get_access_token()
-    
-    if not access_token:
-        return jsonify({"CustomerMessage": "Safaricom login failed."}), 401
-
-    timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-    password = base64.b64encode((BUSINESS_SHORT_CODE + PASSKEY + timestamp).encode()).decode('utf-8')
-    
-    payload = {
-        "BusinessShortCode": BUSINESS_SHORT_CODE,
-        "Password": password,
-        "Timestamp": timestamp,
-        "TransactionType": "CustomerPayBillOnline",
-        "Amount": 1,
-        "PartyA": phone,
-        "PartyB": BUSINESS_SHORT_CODE,
-        "PhoneNumber": phone,
-        "CallBackURL": "https://sheriahub.onrender.com/callback", 
-        "AccountReference": "SheriaHub",
-        "TransactionDesc": "Legal Info"
-    }
-    
     try:
-        res = requests.post("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest", 
-                            json=payload, headers={"Authorization": f"Bearer {access_token}"})
-        return jsonify(res.json())
-    except Exception as e:
-        return jsonify({"CustomerMessage": str(e)}), 500
+        data = request.get_json()
+        phone = data.get("phone")
 
+        if not phone:
+            return jsonify({"error": "Phone number required"}), 400
+
+        access_token = get_access_token()
+
+        if not access_token:
+            return jsonify({"error": "Failed to authenticate with Safaricom"}), 401
+
+        timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+        password = base64.b64encode(
+            (BUSINESS_SHORT_CODE + PASSKEY + timestamp).encode()
+        ).decode('utf-8')
+
+        payload = {
+            "BusinessShortCode": BUSINESS_SHORT_CODE,
+            "Password": password,
+            "Timestamp": timestamp,
+            "TransactionType": "CustomerPayBillOnline",
+            "Amount": 1,
+            "PartyA": phone,
+            "PartyB": BUSINESS_SHORT_CODE,
+            "PhoneNumber": phone,
+            "CallBackURL": "https://sheriahub.onrender.com/callback",
+            "AccountReference": "SheriaHub",
+            "TransactionDesc": "Legal Info Access"
+        }
+
+        headers = {
+            "Authorization": f"Bearer {access_token}"
+        }
+
+        res = requests.post(
+            "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+            json=payload,
+            headers=headers
+        )
+
+        return jsonify(res.json())
+
+    except Exception as e:
+        print("❌ STK PUSH ERROR:")
+        print(traceback.format_exc())
+
+        return jsonify({"error": str(e)}), 500
+
+# ================================
+# CALLBACK (MPESA RESPONSE)
+# ================================
+@app.route('/callback', methods=['POST'])
+def callback():
+    data = request.json
+    print("📲 MPESA CALLBACK:")
+    print(json.dumps(data, indent=2))
+    return jsonify({"status": "received"})
+
+# ================================
+# RUN SERVER
+# ================================
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
