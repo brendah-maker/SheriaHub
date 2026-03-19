@@ -6,74 +6,66 @@ import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from requests.auth import HTTPBasicAuth
-from google import genai
-from google.genai import types
+from groq import Groq
 
 app = Flask(__name__)
 CORS(app)
 
-# --- Configuration ---
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# --- Configuration (Set these in Render Environment Variables) ---
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 CONSUMER_KEY = os.getenv("CONSUMER_KEY")
 CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
 BUSINESS_SHORT_CODE = "174379"
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 
-# Initialize Gemini Client
-client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+# Initialize Groq Client for Llama
+client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 payments_db = {}
 
 @app.route('/')
 def home():
     return jsonify({
         "status": "SheriaHub Backend is Live",
-        "current_model_default": "gemini-3-flash-preview",
+        "engine": "Llama 4 (via Groq)",
         "timestamp": datetime.datetime.now().isoformat()
     }), 200
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client:
-        return jsonify({"error": "Gemini API Key not configured"}), 500
+        return jsonify({"error": "Groq API Key not configured"}), 500
         
     try:
         data = request.get_json()
         question = data.get("question", "")
         category = data.get("category", "tenant")
         
-        # New: Allow frontend to specify model, default to Gemini 3 Flash
-        # Common IDs: 'gemini-3-flash-preview', 'gemini-3.1-pro-preview', 'gemini-3.1-flash-lite-preview'
-        selected_model = data.get("model", "gemini-3-flash-preview")
+        # 2026 Best Practice: Use 'llama-4-scout' for fast summaries 
+        # or 'llama-4-maverick' for deep legal reasoning.
+        selected_model = data.get("model", "llama-4-maverick")
 
         persona = "Kenyan Employment Law expert" if category == "employment" else "Kenyan Landlord & Tenant Law expert"
         
-        prompt = f"""
-        {persona}. Focus strictly on Kenyan statutes. 
+        system_prompt = f"""
+        You are a {persona}. Focus strictly on Kenyan statutes. 
         Return ONLY valid JSON: 
         {{
             "free_summary": "A 2-sentence legal overview.", 
             "paid_deep_dive": "A detailed step-by-step action plan with specific Kenyan law citations (e.g., Rent Restriction Act or Employment Act 2007)."
         }}
-        User Question: {question}
         """
 
-        try:
-            # Primary attempt with selected model
-            response = client.models.generate_content(
-                model=selected_model,
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type='application/json')
-            )
-        except Exception as e:
-            # Fallback to Flash Lite if the primary model is rate-limited (429) or fails
-            print(f"Primary model {selected_model} failed, trying fallback...")
-            response = client.models.generate_content(
-                model="gemini-3.1-flash-lite-preview",
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type='application/json')
-            )
+        # Llama 4 implementation via Groq
+        completion = client.chat.completions.create(
+            model=selected_model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": question}
+            ],
+            response_format={"type": "json_object"} # Forces the model to output JSON
+        )
 
-        return jsonify(json.loads(response.text))
+        return jsonify(json.loads(completion.choices[0].message.content))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -84,15 +76,18 @@ def stk_push():
         phone = data.get("phone", "").strip().replace("+", "")
         amount = data.get("amount", 20)
 
+        # Phone formatting for Safaricom (254...)
         if phone.startswith("0"): phone = "254" + phone[1:]
         elif phone.startswith("7") or phone.startswith("1"): phone = "254" + phone
         
+        # Get M-Pesa Access Token
         auth_res = requests.get(
             "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials", 
             auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET)
         )
         access_token = auth_res.json().get("access_token")
 
+        # Generate Password
         timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         password = base64.b64encode((BUSINESS_SHORT_CODE + PASSKEY + timestamp).encode()).decode()
 
@@ -139,7 +134,6 @@ def callback():
 def check_payment(checkout_id):
     return jsonify({"status": payments_db.get(checkout_id, "pending")})
 
-# Note: The app.run() block is ignored by Gunicorn on Render.
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
