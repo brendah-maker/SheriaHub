@@ -1,5 +1,9 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index" }
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "destination": "https://brendah-maker.github.io/SheriaHub/",
+      "permanent": true
+    }
   ]
 }
