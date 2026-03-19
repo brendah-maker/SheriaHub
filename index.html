@@ -93,21 +93,6 @@ button:hover {
   text-align: center;
 }
 
-/* CHAT SECTION */
-.chat-box {
-  max-width: 700px;
-  margin: 40px auto;
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-}
-
-.chat-messages {
-  height: 200px;
-  overflow-y: auto;
-  margin-bottom: 10px;
-}
-
 /* AI PREVIEW */
 .ai-preview {
   max-width: 900px;
@@ -151,7 +136,6 @@ button:hover {
   <div id="response"></div>
 </div>
 
-<!-- FEATURES -->
 <div class="features">
   <div class="feature-box">
     <h3>⚖️ Verified Law</h3>
@@ -169,25 +153,11 @@ button:hover {
   </div>
 </div>
 
-<!-- CHAT 
-<div class="chat-box">
-  <h3>💬 Chat with Sheria AI</h3>
-
-  <div id="chatMessages" class="chat-messages"></div>
-
-  <div class="input-group">
-    <input type="text" id="chatInput" placeholder="Ask follow-up...">
-    <button onclick="sendChat()">Send</button>
-  </div>
-</div> -->
-
-<!-- AI PREVIEW -->
 <div class="ai-preview">
   <h2>🚀 Coming Soon</h2>
   <p>Upload your lease agreement and let AI detect unfair clauses instantly.</p>
 </div>
 
-<!-- FOOTER -->
 <div class="footer">
   <p><strong>Disclaimer:</strong> Not legal advice.</p>
   <p>© 2026 SheriaHub Kenya</p>
@@ -195,97 +165,89 @@ button:hover {
 
 <script>
 const API = "https://sheriahub.onrender.com";
-const userId = "user_" + Math.random().toString(36).substring(7);
+let currentPaidAnswer = "";
 
 // ASK AI
 async function getAnswer() {
   const q = document.getElementById("question").value;
   const resDiv = document.getElementById("response");
 
+  if (!q) return;
+
   resDiv.innerHTML = "⏳ Thinking...";
 
-  const res = await fetch(`${API}/ask-ai`, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ question: q })
-  });
+  try {
+    const res = await fetch(`${API}/ask-ai`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ question: q })
+    });
 
-  const data = await res.json();
-  window.paidAnswer = data.paid_deep_dive;
+    const data = await res.json();
+    currentPaidAnswer = data.paid_deep_dive;
 
-  resDiv.innerHTML = `
-    <p><strong>${data.free_summary}</strong></p>
+    resDiv.innerHTML = `
+      <p><strong>${data.free_summary}</strong></p>
 
-    <div class="paywall">
-      <p>🔒 Unlock full legal answer (KSh 20)</p>
-      <button onclick="pay()">Pay with M-Pesa</button>
-      <div id="payStatus"></div>
-    </div>
-  `;
+      <div class="paywall">
+        <p>🔒 Unlock full legal answer (KSh 20)</p>
+        <button onclick="pay()">Pay with M-Pesa</button>
+        <div id="payStatus" style="margin-top: 10px; font-weight: bold;"></div>
+      </div>
+    `;
+  } catch (err) {
+    resDiv.innerHTML = "❌ Error connecting to server.";
+  }
 }
 
 // PAYMENT FLOW
 async function pay() {
-  const phone = prompt("Enter phone (2547...)");
+  const phone = prompt("Enter phone (e.g. 254712345678)");
   if (!phone) return;
+  
+  const statusDiv = document.getElementById("payStatus");
+  statusDiv.innerHTML = "⏳ Initiating payment...";
 
-  const res = await fetch(`${API}/stkpush`, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ phone })
-  });
+  try {
+    const res = await fetch(`${API}/stkpush`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ phone })
+    });
 
-  const data = await res.json();
-  const ref = data.ref;
-
-  document.getElementById("payStatus").innerHTML = "⏳ Waiting for payment...";
-
-  const interval = setInterval(async () => {
-    const check = await fetch(`${API}/check-payment/${ref}`);
-    const result = await check.json();
-
-    if (result.status === "paid") {
-      clearInterval(interval);
-
-      document.getElementById("response").innerHTML = `
-        <h3>✅ Full Legal Answer</h3>
-        <p>${window.paidAnswer}</p>
-      `;
+    const data = await res.json();
+    
+    if (data.error) {
+      statusDiv.innerHTML = "❌ STK Push failed. Check phone format.";
+      return;
     }
 
-    if (result.status === "failed") {
-      clearInterval(interval);
-      alert("Payment failed");
-    }
+    const checkoutId = data.checkout_id;
+    statusDiv.innerHTML = "⏳ Waiting for you to enter M-Pesa PIN...";
 
-  }, 3000);
+    const interval = setInterval(async () => {
+      const check = await fetch(`${API}/check-payment/${checkoutId}`);
+      const result = await check.json();
+
+      if (result.status === "paid") {
+        clearInterval(interval);
+
+        document.getElementById("response").innerHTML = `
+          <h3>✅ Full Legal Answer</h3>
+          <p>${currentPaidAnswer.replace(/\n/g, '<br>')}</p>
+        `;
+      }
+
+      if (result.status === "failed") {
+        clearInterval(interval);
+        statusDiv.innerHTML = "❌ Payment failed or was cancelled.";
+      }
+
+    }, 3000);
+  } catch (err) {
+    statusDiv.innerHTML = "❌ Error processing payment request.";
+  }
 }
-
-// CHAT SYSTEM
-<!-- async function sendChat() {
-  const input = document.getElementById("chatInput");
-  const msg = input.value;
-
-  if (!msg) return;
-
-  const res = await fetch(`${API}/chat`, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      user_id: userId,
-      message: msg
-    })
-  });
-
-  const data = await res.json();
-
-  document.getElementById("chatMessages").innerHTML += `
-    <p><b>You:</b> ${msg}</p>
-    <p><b>AI:</b> ${data.reply}</p>
-  `;
-
-  input.value = "";
-} -->
 </script>
 
 </body>
