@@ -10,10 +10,9 @@ from google import genai
 from google.genai import types
 
 app = Flask(__name__)
-# Enable CORS so your frontend can talk to this backend
 CORS(app)
 
-# --- Configuration (Set these in Render Environment Variables) ---
+# --- Configuration ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 CONSUMER_KEY = os.getenv("CONSUMER_KEY")
 CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
@@ -26,10 +25,9 @@ payments_db = {}
 
 @app.route('/')
 def home():
-    """Root route to prevent 404/502 errors on Render health checks."""
     return jsonify({
         "status": "SheriaHub Backend is Live",
-        "model": "Gemini 2.5 Flash",
+        "current_model_default": "gemini-3-flash-preview",
         "timestamp": datetime.datetime.now().isoformat()
     }), 200
 
@@ -42,6 +40,10 @@ def ask_ai():
         data = request.get_json()
         question = data.get("question", "")
         category = data.get("category", "tenant")
+        
+        # New: Allow frontend to specify model, default to Gemini 3 Flash
+        # Common IDs: 'gemini-3-flash-preview', 'gemini-3.1-pro-preview', 'gemini-3.1-flash-lite-preview'
+        selected_model = data.get("model", "gemini-3-flash-preview")
 
         persona = "Kenyan Employment Law expert" if category == "employment" else "Kenyan Landlord & Tenant Law expert"
         
@@ -55,12 +57,22 @@ def ask_ai():
         User Question: {question}
         """
 
-        # Using Gemini 2.5 Flash as requested
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type='application/json')
-        )
+        try:
+            # Primary attempt with selected model
+            response = client.models.generate_content(
+                model=selected_model,
+                contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type='application/json')
+            )
+        except Exception as e:
+            # Fallback to Flash Lite if the primary model is rate-limited (429) or fails
+            print(f"Primary model {selected_model} failed, trying fallback...")
+            response = client.models.generate_content(
+                model="gemini-3.1-flash-lite-preview",
+                contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type='application/json')
+            )
+
         return jsonify(json.loads(response.text))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -72,18 +84,15 @@ def stk_push():
         phone = data.get("phone", "").strip().replace("+", "")
         amount = data.get("amount", 20)
 
-        # Phone formatting for Safaricom (254...)
         if phone.startswith("0"): phone = "254" + phone[1:]
         elif phone.startswith("7") or phone.startswith("1"): phone = "254" + phone
         
-        # Get M-Pesa Access Token
         auth_res = requests.get(
             "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials", 
             auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET)
         )
         access_token = auth_res.json().get("access_token")
 
-        # Generate Password
         timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         password = base64.b64encode((BUSINESS_SHORT_CODE + PASSKEY + timestamp).encode()).decode()
 
@@ -130,7 +139,7 @@ def callback():
 def check_payment(checkout_id):
     return jsonify({"status": payments_db.get(checkout_id, "pending")})
 
+# Note: The app.run() block is ignored by Gunicorn on Render.
 if __name__ == '__main__':
-    # CRITICAL: Bind to 0.0.0.0 and use the PORT env var for Render
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
