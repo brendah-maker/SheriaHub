@@ -10,9 +10,10 @@ body {
   margin: 0;
   font-family: 'Segoe UI', sans-serif;
   background: #f5f7fa;
+  color: #333;
 }
 
-/* NAV */
+/* NAVBAR */
 .navbar {
   background: #0a1f44;
   color: white;
@@ -29,7 +30,7 @@ body {
 }
 
 .chat-container {
-  max-width: 650px;
+  max-width: 700px;
   margin: -50px auto 40px;
   background: white;
   border-radius: 12px;
@@ -58,20 +59,72 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
-  background: #888;
-  cursor: not-allowed;
+button:hover {
+  background: #163a73;
 }
 
 #response {
   margin-top: 20px;
 }
 
+/* PAYWALL */
 .paywall {
   background: #f0f7ff;
   padding: 20px;
   margin-top: 15px;
   border-left: 5px solid #0a1f44;
+}
+
+/* FEATURES */
+.features {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 40px;
+}
+
+.feature-box {
+  background: white;
+  padding: 20px;
+  width: 260px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+  text-align: center;
+}
+
+/* CHAT SECTION */
+.chat-box {
+  max-width: 700px;
+  margin: 40px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.chat-messages {
+  height: 200px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
+/* AI PREVIEW */
+.ai-preview {
+  max-width: 900px;
+  margin: 40px auto;
+  text-align: center;
+  padding: 40px;
+  background: #eef2f7;
+  border-radius: 20px;
+}
+
+/* FOOTER */
+.footer {
+  background: #0a1f44;
+  color: white;
+  text-align: center;
+  padding: 30px;
+  margin-top: 40px;
 }
 </style>
 </head>
@@ -88,104 +141,150 @@ button:disabled {
 </div>
 
 <div class="chat-container">
-  <h2>Ask a Question</h2>
+  <h2>Ask a Legal Question</h2>
 
   <div class="input-group">
     <input type="text" id="question" placeholder="e.g. eviction notice period">
-    <button id="askBtn" onclick="getAnswer()">Ask</button>
+    <button onclick="getAnswer()">Ask</button>
   </div>
 
   <div id="response"></div>
 </div>
 
+<!-- FEATURES -->
+<div class="features">
+  <div class="feature-box">
+    <h3>⚖️ Verified Law</h3>
+    <p>Based on Kenyan legal frameworks.</p>
+  </div>
+
+  <div class="feature-box">
+    <h3>🏛️ Tribunal Guidance</h3>
+    <p>Understand dispute resolution steps.</p>
+  </div>
+
+  <div class="feature-box">
+    <h3>🔒 Secure Insights</h3>
+    <p>Unlock detailed answers via M-Pesa.</p>
+  </div>
+</div>
+
+<!-- CHAT -->
+<div class="chat-box">
+  <h3>💬 Chat with Sheria AI</h3>
+
+  <div id="chatMessages" class="chat-messages"></div>
+
+  <div class="input-group">
+    <input type="text" id="chatInput" placeholder="Ask follow-up...">
+    <button onclick="sendChat()">Send</button>
+  </div>
+</div>
+
+<!-- AI PREVIEW -->
+<div class="ai-preview">
+  <h2>🚀 Coming Soon</h2>
+  <p>Upload your lease agreement and let AI detect unfair clauses instantly.</p>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p><strong>Disclaimer:</strong> Not legal advice.</p>
+  <p>© 2026 SheriaHub Kenya</p>
+</div>
+
 <script>
-const API_BASE = "https://sheriahub.onrender.com";
+const API = "https://sheriahub.onrender.com";
+const userId = "user_" + Math.random().toString(36).substring(7);
 
+// ASK AI
 async function getAnswer() {
-  const q = document.getElementById("question").value.trim();
-  const responseDiv = document.getElementById("response");
-  const btn = document.getElementById("askBtn");
+  const q = document.getElementById("question").value;
+  const resDiv = document.getElementById("response");
 
-  if (!q) {
-    responseDiv.innerHTML = "<p style='color:red;'>Enter a question</p>";
-    return;
-  }
+  resDiv.innerHTML = "⏳ Thinking...";
 
-  btn.disabled = true;
-  btn.innerText = "Thinking...";
+  const res = await fetch(`${API}/ask-ai`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ question: q })
+  });
 
-  responseDiv.innerHTML = "<p>🔍 Analyzing Kenyan law...</p>";
+  const data = await res.json();
+  window.paidAnswer = data.paid_deep_dive;
 
-  try {
-    const res = await fetch(`${API_BASE}/ask-ai`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ question: q })
-    });
+  resDiv.innerHTML = `
+    <p><strong>${data.free_summary}</strong></p>
 
-    if (!res.ok) throw new Error("Server error");
-
-    const data = await res.json();
-
-    if (!data.free_summary) throw new Error("Invalid AI response");
-
-    responseDiv.innerHTML = `
-      <p><strong>Answer:</strong> ${data.free_summary}</p>
-
-      <div class="paywall">
-        <p>🔒 Unlock full legal guidance (KSh 20)</p>
-        <button onclick="unlockAnswer()">Pay with M-Pesa</button>
-        <div id="mpesaStatus"></div>
-      </div>
-    `;
-
-    // store deep answer globally (safe)
-    window.paidAnswer = data.paid_deep_dive;
-
-  } catch (err) {
-    responseDiv.innerHTML = `<p style="color:red;">❌ ${err.message}</p>`;
-  }
-
-  btn.disabled = false;
-  btn.innerText = "Ask";
+    <div class="paywall">
+      <p>🔒 Unlock full legal answer (KSh 20)</p>
+      <button onclick="pay()">Pay with M-Pesa</button>
+      <div id="payStatus"></div>
+    </div>
+  `;
 }
 
-async function unlockAnswer() {
-  const phone = prompt("Enter phone (2547XXXXXXXX):");
+// PAYMENT FLOW
+async function pay() {
+  const phone = prompt("Enter phone (2547...)");
   if (!phone) return;
 
-  const statusDiv = document.getElementById("mpesaStatus");
-  statusDiv.innerHTML = "⏳ Sending STK push...";
+  const res = await fetch(`${API}/stkpush`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ phone })
+  });
 
-  try {
-    const res = await fetch(`${API_BASE}/stkpush`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ phone })
-    });
+  const data = await res.json();
+  const ref = data.ref;
 
-    const data = await res.json();
+  document.getElementById("payStatus").innerHTML = "⏳ Waiting for payment...";
 
-    if (data.ResponseCode === "0") {
-      statusDiv.innerHTML = "✅ Payment request sent. Enter PIN...";
+  const interval = setInterval(async () => {
+    const check = await fetch(`${API}/check-payment/${ref}`);
+    const result = await check.json();
 
-      setTimeout(() => {
-        document.getElementById("response").innerHTML = `
-          <div style="padding:20px;border:2px solid #0a1f44;border-radius:10px;">
-            <h3>AI Legal Insight</h3>
-            <p>${window.paidAnswer}</p>
-            <button onclick="location.reload()">Ask another</button>
-          </div>
-        `;
-      }, 5000);
+    if (result.status === "paid") {
+      clearInterval(interval);
 
-    } else {
-      statusDiv.innerHTML = "❌ Payment failed";
+      document.getElementById("response").innerHTML = `
+        <h3>✅ Full Legal Answer</h3>
+        <p>${window.paidAnswer}</p>
+      `;
     }
 
-  } catch (err) {
-    statusDiv.innerHTML = "❌ Server error";
-  }
+    if (result.status === "failed") {
+      clearInterval(interval);
+      alert("Payment failed");
+    }
+
+  }, 3000);
+}
+
+// CHAT SYSTEM
+async function sendChat() {
+  const input = document.getElementById("chatInput");
+  const msg = input.value;
+
+  if (!msg) return;
+
+  const res = await fetch(`${API}/chat`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      user_id: userId,
+      message: msg
+    })
+  });
+
+  const data = await res.json();
+
+  document.getElementById("chatMessages").innerHTML += `
+    <p><b>You:</b> ${msg}</p>
+    <p><b>AI:</b> ${data.reply}</p>
+  `;
+
+  input.value = "";
 }
 </script>
 
