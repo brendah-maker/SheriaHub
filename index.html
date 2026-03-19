@@ -240,6 +240,7 @@
 
   <div class="footer">
     <p><strong>Disclaimer:</strong> SheriaHub provides general legal information for educational purposes. It does not constitute legal advice from an advocate.</p>
+    <p>Payments are for information retrieval. SheriaHub is not a law firm.</p>
     <p>© 2026 SheriaHub Kenya | Empowering Tenants & Landlords</p>
   </div>
 
@@ -291,10 +292,11 @@
             <p><strong>Common Right:</strong> ${found.free}</p>
           </div>
 
-          <div class="paywall">
+          <div class="paywall" id="paywall-section">
             <small>🔒 <strong>Deep Dive:</strong> Get the specific legal clauses, notice periods, and tribunal steps for this issue.</small>
             <strong>Unlock for KSh 20</strong><br><br>
             <button onclick="unlock('${found.paid.replace(/'/g, "\\'")}')">Pay with M-Pesa</button>
+            <div id="loading-msg" style="display: none; color: #e67e22; font-weight: bold; margin-top: 15px;">⏳ Connecting to M-Pesa... Please wait.</div>
           </div>
         `;
       } else {
@@ -306,33 +308,49 @@
       }
     }
 
-async function unlock(answer) {
-    const phone = prompt("Enter phone number (2547...) to pay KSh 20:");
-    
-    if (phone) {
+    async function unlock(answer) {
+      const phone = prompt("Enter phone number (2547...) to pay KSh 20:");
+      
+      if (phone) {
+        // Show loading message
+        const loadingMsg = document.getElementById("loading-msg");
+        loadingMsg.style.display = "block";
+
         try {
-            // Replace with your actual Render URL after deployment
-            const response = await fetch('https://your-render-app-name.onrender.com/stkpush', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: phone })
-            });
+          // Send request to your Render backend
+          const response = await fetch('https://sheriahub.onrender.com/stkpush', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: phone })
+          });
+          
+          const result = await response.json();
+          
+          if (result.ResponseCode === "0") {
+            alert("STK Push sent! Check your phone and enter your M-Pesa PIN.");
             
-            const result = await response.json();
-            
-            if (result.ResponseCode === "0") {
-                alert("STK Push sent! Enter your PIN on your phone.");
-                // For MVP, show the answer after they confirm the prompt
-                document.getElementById("response").innerHTML = `<p>${answer}</p>`;
-            } else {
-                alert("M-Pesa error: " + result.CustomerMessage);
-            }
+            // Replace the paywall with the unlocked answer
+            const responseDiv = document.getElementById("response");
+            responseDiv.innerHTML = `
+              <div style="background: #fff; border: 2px solid #0a1f44; padding: 20px; border-radius: 10px; margin-top: 15px; position: relative;">
+                <span style="position: absolute; top: -10px; right: 10px; background: #0a1f44; color: white; padding: 2px 10px; border-radius: 10px; font-size: 12px;">Verified Legal Info</span>
+                <p><strong>Detailed Legal Procedure:</strong></p>
+                <p style="font-size: 16px; color: #1a1a1a;">${answer}</p>
+                <hr>
+                <button onclick="location.reload()" style="background: #555; font-size: 12px; padding: 8px 15px; margin-top: 10px;">Ask another question</button>
+              </div>
+            `;
+          } else {
+            alert("M-Pesa error: " + (result.CustomerMessage || "Failed to initiate payment."));
+            loadingMsg.style.display = "none";
+          }
         } catch (err) {
-            console.error(err);
-            alert("Could not connect to payment server.");
+          console.error(err);
+          alert("Could not connect to payment server. If this is the first time today, the server might be waking up (takes about 30-50 seconds). Try clicking Pay again!");
+          loadingMsg.style.display = "none";
         }
+      }
     }
-}
   </script>
 
 </body>
