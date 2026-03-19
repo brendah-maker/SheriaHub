@@ -1,329 +1,192 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SheriaHub - Tenant & Landlord Rights Kenya</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SheriaHub - Tenant & Landlord Rights Kenya</title>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f5f7fa;
-      color: #333;
-    }
+<style>
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: #f5f7fa;
+}
 
-    /* NAVBAR */
-    .navbar {
-      background: #0a1f44;
-      color: white;
-      padding: 15px 40px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-    }
+/* NAV */
+.navbar {
+  background: #0a1f44;
+  color: white;
+  padding: 15px 40px;
+  display: flex;
+  justify-content: space-between;
+}
 
-    .logo {
-      font-size: 22px;
-      font-weight: bold;
-      letter-spacing: 1px;
-    }
+.hero {
+  background: #0a1f44;
+  color: white;
+  text-align: center;
+  padding: 80px 20px;
+}
 
-    .nav-links a {
-      color: white;
-      text-decoration: none;
-      margin-left: 20px;
-      font-size: 14px;
-      opacity: 0.8;
-    }
+.chat-container {
+  max-width: 650px;
+  margin: -50px auto 40px;
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
 
-    .nav-links a:hover {
-      opacity: 1;
-    }
+.input-group {
+  display: flex;
+  gap: 10px;
+}
 
-    /* HERO */
-    .hero {
-      background: #0a1f44;
-      color: white;
-      text-align: center;
-      padding: 80px 20px;
-    }
+input {
+  flex-grow: 1;
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid #ddd;
+}
 
-    .hero h1 {
-      font-size: 36px;
-      margin-bottom: 10px;
-    }
+button {
+  padding: 12px 20px;
+  background: #0a1f44;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
 
-    .hero p {
-      font-size: 18px;
-      opacity: 0.9;
-      max-width: 600px;
-      margin: 0 auto;
-    }
+button:disabled {
+  background: #888;
+  cursor: not-allowed;
+}
 
-    /* CHAT BOX */
-    .chat-container {
-      max-width: 650px;
-      margin: -50px auto 40px;
-      background: white;
-      border-radius: 12px;
-      padding: 30px;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.15);
-    }
+#response {
+  margin-top: 20px;
+}
 
-    .chat-container h2 {
-      margin-top: 0;
-      color: #0a1f44;
-      font-size: 20px;
-      margin-bottom: 20px;
-    }
-
-    .input-group {
-      display: flex;
-      gap: 10px;
-    }
-
-    input {
-      flex-grow: 1;
-      padding: 12px;
-      border: 2px solid #e1e8ed;
-      border-radius: 8px;
-      font-size: 15px;
-      outline: none;
-    }
-
-    input:focus {
-      border-color: #0a1f44;
-    }
-
-    button {
-      padding: 12px 25px;
-      border: none;
-      background: #0a1f44;
-      color: white;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-
-    button:hover {
-      background: #163a73;
-    }
-
-    #response {
-      margin-top: 25px;
-      line-height: 1.7;
-    }
-
-    .paywall {
-      background: #f0f7ff;
-      padding: 20px;
-      border-radius: 10px;
-      margin-top: 15px;
-      border-left: 5px solid #0a1f44;
-    }
-
-    .paywall small {
-      display: block;
-      margin-bottom: 10px;
-      color: #555;
-    }
-
-    /* FEATURES */
-    .features {
-      display: flex;
-      justify-content: center;
-      gap: 30px;
-      padding: 40px 20px;
-      flex-wrap: wrap;
-    }
-
-    .feature-box {
-      background: white;
-      padding: 25px;
-      width: 280px;
-      border-radius: 12px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-      text-align: center;
-    }
-
-    .feature-box h3 {
-      color: #0a1f44;
-      margin-bottom: 10px;
-    }
-
-    /* AI COMING SOON SECTION */
-    .ai-preview {
-      max-width: 900px;
-      margin: 40px auto;
-      text-align: center;
-      padding: 40px 20px;
-      background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
-      border-radius: 20px;
-    }
-
-    .badge {
-      background: #e67e22;
-      color: white;
-      padding: 5px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      text-transform: uppercase;
-      font-weight: bold;
-    }
-
-    /* FOOTER */
-    .footer {
-      background: #0a1f44;
-      color: white;
-      text-align: center;
-      padding: 40px 20px;
-      font-size: 14px;
-      margin-top: 50px;
-    }
-
-    .footer p { opacity: 0.7; margin: 5px 0; }
-  </style>
+.paywall {
+  background: #f0f7ff;
+  padding: 20px;
+  margin-top: 15px;
+  border-left: 5px solid #0a1f44;
+}
+</style>
 </head>
 
 <body>
 
-  <div class="navbar">
-    <div class="logo">SheriaHub</div>
-    <div class="nav-links">
-      <a href="#">Laws</a>
-      <a href="#">Tribunals</a>
-      <a href="#">Contact</a>
-    </div>
+<div class="navbar">
+  <div><strong>SheriaHub</strong></div>
+</div>
+
+<div class="hero">
+  <h1>SheriaHub: Tenant & Landlord Rights</h1>
+  <p>Simplified Kenyan legal information powered by AI</p>
+</div>
+
+<div class="chat-container">
+  <h2>Ask a Question</h2>
+
+  <div class="input-group">
+    <input type="text" id="question" placeholder="e.g. eviction notice period">
+    <button id="askBtn" onclick="getAnswer()">Ask</button>
   </div>
 
-  <div class="hero">
-    <h1>SheriaHub: Tenant & Landlord Rights</h1>
-    <p>Simplified legal information based on the Laws of Kenya and the Landlord & Tenant Bill.</p>
-  </div>
+  <div id="response"></div>
+</div>
 
-  <div class="chat-container">
-    <h2>Ask a Question</h2>
-    <div class="input-group">
-      <input type="text" id="question" placeholder="e.g. How long is an eviction notice?">
-      <button onclick="getAnswer()">Ask</button>
-    </div>
-    <div id="response"></div>
-  </div>
+<script>
+const API_BASE = "https://sheriahub.onrender.com";
 
-  <div class="features">
-    <div class="feature-box">
-      <h3>⚖️ Verified Law</h3>
-      <p>Content derived from the Rent Restriction Act and 2021/2024 Amendments.</p>
-    </div>
+async function getAnswer() {
+  const q = document.getElementById("question").value.trim();
+  const responseDiv = document.getElementById("response");
+  const btn = document.getElementById("askBtn");
 
-    <div class="feature-box">
-      <h3>🏛️ Tribunal Guidance</h3>
-      <p>Understand how to approach the Rent Restriction Tribunal (RRT).</p>
-    </div>
+  if (!q) {
+    responseDiv.innerHTML = "<p style='color:red;'>Enter a question</p>";
+    return;
+  }
 
-    <div class="feature-box">
-      <h3>🔒 Secure Insights</h3>
-      <p>Detailed legal procedures unlocked via secure M-Pesa verification.</p>
-    </div>
-  </div>
+  btn.disabled = true;
+  btn.innerText = "Thinking...";
 
-  <div class="ai-preview">
-    <span class="badge">Coming Soon</span>
-    <h2 style="color: #0a1f44; margin-top: 15px;">Sheria AI Smart Assistant</h2>
-    <p>Soon, you'll be able to upload your <b>Lease Agreement</b> and have our AI scan it for unfair clauses or illegal terms instantly.</p>
-  </div>
+  responseDiv.innerHTML = "<p>🔍 Analyzing Kenyan law...</p>";
 
-  <div class="footer">
-    <p><strong>Disclaimer:</strong> SheriaHub provides general legal information for educational purposes. It does not constitute legal advice from an advocate.</p>
-    <p>Payments are for information retrieval. SheriaHub is not a law firm.</p>
-    <p>© 2026 SheriaHub Kenya | Empowering Tenants & Landlords</p>
-  </div>
+  try {
+    const res = await fetch(`${API_BASE}/ask-ai`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ question: q })
+    });
 
+    if (!res.ok) throw new Error("Server error");
 
+    const data = await res.json();
 
+    if (!data.free_summary) throw new Error("Invalid AI response");
 
+    responseDiv.innerHTML = `
+      <p><strong>Answer:</strong> ${data.free_summary}</p>
 
-  <script>
-    async function getAnswer() {
-      let q = document.getElementById("question").value;
-      let responseDiv = document.getElementById("response");
+      <div class="paywall">
+        <p>🔒 Unlock full legal guidance (KSh 20)</p>
+        <button onclick="unlockAnswer()">Pay with M-Pesa</button>
+        <div id="mpesaStatus"></div>
+      </div>
+    `;
 
-      if (!q.trim()) {
-        responseDiv.innerHTML = "<p style='color:red;'>Please enter a question first.</p>";
-        return;
-      }
+    // store deep answer globally (safe)
+    window.paidAnswer = data.paid_deep_dive;
 
-      // Show loading state
-      responseDiv.innerHTML = "<p style='color: #0a1f44;'>🔍 <b>Sheria AI is analyzing Kenyan Law...</b></p>";
+  } catch (err) {
+    responseDiv.innerHTML = `<p style="color:red;">❌ ${err.message}</p>`;
+  }
 
-      try {
-        const res = await fetch('[https://sheriahub.onrender.com/ask-ai](https://sheriahub.onrender.com/ask-ai)', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question: q })
-        });
-        
-        const aiResult = await res.json();
+  btn.disabled = false;
+  btn.innerText = "Ask";
+}
 
-        responseDiv.innerHTML = `
-          <div style="padding: 10px; border-bottom: 1px solid #eee;">
-            <p><strong>Common Right:</strong> ${aiResult.free_summary}</p>
-          </div>
+async function unlockAnswer() {
+  const phone = prompt("Enter phone (2547XXXXXXXX):");
+  if (!phone) return;
 
-          <div class="paywall" id="paywall-section">
-            <small>🔒 <strong>Sheria AI Deep Dive:</strong> Get specific legal clauses and tribunal steps generated for your exact situation.</small>
-            <strong>Unlock for KSh 20</strong><br><br>
-            <button onclick="unlock('${aiResult.paid_deep_dive.replace(/'/g, "\\'")}')">Pay with M-Pesa</button>
-            <div id="loading-msg" style="display: none; color: #e67e22; font-weight: bold; margin-top: 15px;">⏳ Connecting to M-Pesa... Please wait.</div>
+  const statusDiv = document.getElementById("mpesaStatus");
+  statusDiv.innerHTML = "⏳ Sending STK push...";
+
+  try {
+    const res = await fetch(`${API_BASE}/stkpush`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ phone })
+    });
+
+    const data = await res.json();
+
+    if (data.ResponseCode === "0") {
+      statusDiv.innerHTML = "✅ Payment request sent. Enter PIN...";
+
+      setTimeout(() => {
+        document.getElementById("response").innerHTML = `
+          <div style="padding:20px;border:2px solid #0a1f44;border-radius:10px;">
+            <h3>AI Legal Insight</h3>
+            <p>${window.paidAnswer}</p>
+            <button onclick="location.reload()">Ask another</button>
           </div>
         `;
-      } catch (err) {
-        responseDiv.innerHTML = "<p>Error connecting to Sheria AI. Please try again.</p>";
-      }
+      }, 5000);
+
+    } else {
+      statusDiv.innerHTML = "❌ Payment failed";
     }
 
-    async function unlock(paidAnswer) {
-      const phone = prompt("Enter phone number (2547...) to pay KSh 20:");
-      if (!phone) return;
-
-      const loadingMsg = document.getElementById("loading-msg");
-      loadingMsg.style.display = "block";
-
-      try {
-        const response = await fetch('[https://sheriahub.onrender.com/stkpush](https://sheriahub.onrender.com/stkpush)', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: phone })
-        });
-        
-        const result = await response.json();
-        
-        if (result.ResponseCode === "0") {
-          alert("STK Push sent! Enter your PIN to unlock.");
-          
-          const responseDiv = document.getElementById("response");
-          responseDiv.innerHTML = `
-            <div style="background: #fff; border: 2px solid #0a1f44; padding: 20px; border-radius: 10px; margin-top: 15px;">
-              <p><strong>AI Legal Guidance:</strong></p>
-              <p style="font-size: 16px; color: #1a1a1a; line-height: 1.6;">${paidAnswer}</p>
-              <hr>
-              <button onclick="location.reload()" style="background: #555; font-size: 12px; padding: 8px 15px;">Ask another question</button>
-            </div>
-          `;
-        } else {
-          alert("Payment failed: " + (result.CustomerMessage || "Unknown error"));
-          loadingMsg.style.display = "none";
-        }
-      } catch (err) {
-        alert("Server error. Try again.");
-        loadingMsg.style.display = "none";
-      }
-    }
+  } catch (err) {
+    statusDiv.innerHTML = "❌ Server error";
+  }
+}
 </script>
 
 </body>
