@@ -11,29 +11,25 @@ from groq import Groq
 app = Flask(__name__)
 CORS(app)
 
-# --- Configuration (Set these in Render Environment Variables) ---
+# --- Configuration ---
+# Ensure these are set in your Render Environment Variables
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 CONSUMER_KEY = os.getenv("CONSUMER_KEY")
 CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
 BUSINESS_SHORT_CODE = "174379"
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 
-# Initialize Groq Client
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 payments_db = {}
 
 @app.route('/')
 def home():
-    return jsonify({
-        "status": "SheriaHub Backend is Live",
-        "engine": "Llama 4 Maverick",
-        "timestamp": datetime.datetime.now().isoformat()
-    }), 200
+    return jsonify({"status": "SheriaHub Live", "engine": "Llama 4 Maverick"}), 200
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client:
-        return jsonify({"error": "Groq API Key not configured"}), 500
+        return jsonify({"error": "API Key missing"}), 500
         
     try:
         data = request.get_json()
@@ -44,11 +40,9 @@ def ask_ai():
         
         system_prompt = f"""
         You are a {persona}. Focus strictly on Kenyan statutes. 
-        Return ONLY valid JSON: 
-        {{
-            "free_summary": "A 2-sentence legal overview.", 
-            "paid_deep_dive": "A detailed step-by-step action plan with specific Kenyan law citations (e.g., Rent Restriction Act or Employment Act 2007)."
-        }}
+        Return ONLY valid JSON with exactly these two keys:
+        "free_summary": "2-sentence legal overview",
+        "paid_deep_dive": "detailed citations and action plan"
         """
 
         completion = client.chat.completions.create(
@@ -60,9 +54,14 @@ def ask_ai():
             response_format={"type": "json_object"}
         )
 
-        return jsonify(json.loads(completion.choices[0].message.content))
+        ai_response = json.loads(completion.choices[0].message.content)
+        
+        return jsonify({
+            "free_summary": ai_response.get("free_summary", "Summary unavailable."),
+            "paid_deep_dive": ai_response.get("paid_deep_dive", "Detailed plan unavailable.")
+        })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Failed to reach AI"}), 500
 
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
@@ -94,7 +93,7 @@ def stk_push():
             "PhoneNumber": phone,
             "CallBackURL": "https://sheriahub.onrender.com/api/callback", 
             "AccountReference": "SheriaHub",
-            "TransactionDesc": "Legal Advice Fee"
+            "TransactionDesc": "Legal Fee"
         }
 
         res = requests.post(
@@ -103,13 +102,11 @@ def stk_push():
             headers={"Authorization": f"Bearer {access_token}"}
         )
         
-        res_data = res.json()
-        cid = res_data.get("CheckoutRequestID")
-        
+        cid = res.json().get("CheckoutRequestID")
         if cid:
             payments_db[cid] = "pending"
             return jsonify({"checkout_id": cid})
-        return jsonify({"error": "STK Push failed", "details": res_data}), 400
+        return jsonify({"error": "STK failed"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
