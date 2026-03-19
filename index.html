@@ -14,12 +14,23 @@
   --text: #333;
 }
 
-body {
+/* Flexbox to keep footer at bottom */
+html, body {
+  height: 100%;
   margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
   font-family: 'Segoe UI', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   overflow-x: hidden;
+}
+
+.content-wrapper {
+  flex: 1 0 auto; /* This pushes the footer down */
 }
 
 /* NAVBAR */
@@ -89,7 +100,6 @@ body {
   border: 1px solid #eee;
 }
 
-/* ADAPTABLE INPUT GROUP */
 .input-group {
   display: flex;
   flex-direction: column;
@@ -103,7 +113,6 @@ body {
   }
 }
 
-/* The Adaptable Textarea */
 textarea {
   flex-grow: 1;
   padding: 15px;
@@ -112,8 +121,8 @@ textarea {
   outline: none;
   font-size: 16px;
   font-family: inherit;
-  resize: none; /* Prevents manual resizing corner */
-  overflow: hidden; /* Hides scrollbar as it grows */
+  resize: none; 
+  overflow: hidden;
   min-height: 50px;
   box-sizing: border-box;
 }
@@ -134,7 +143,6 @@ textarea:focus {
   white-space: nowrap;
 }
 
-/* RESPONSE */
 #response { margin-top: 25px; line-height: 1.6; font-size: 0.95rem; }
 
 .paywall {
@@ -146,7 +154,6 @@ textarea:focus {
   text-align: center;
 }
 
-/* FEATURES */
 .features {
   display: grid;
   grid-template-columns: 1fr;
@@ -155,9 +162,7 @@ textarea:focus {
 }
 
 @media (min-width: 600px) {
-  .features {
-    grid-template-columns: 1fr 1fr;
-  }
+  .features { grid-template-columns: 1fr 1fr; }
 }
 
 .feature-box {
@@ -171,6 +176,7 @@ textarea:focus {
 
 /* FOOTER */
 .footer {
+  flex-shrink: 0; /* Keeps footer from shrinking */
   background: var(--navy);
   color: white;
   text-align: center;
@@ -182,37 +188,39 @@ textarea:focus {
 </head>
 <body>
 
-<div class="navbar">
-  <div style="font-weight: bold; font-size: 1.2rem;">⚖️ SheriaHub</div>
-  <div style="font-size: 0.75rem; opacity: 0.8;">Kenya v2.5</div>
-</div>
-
-<div class="hero">
-  <h1>Your Legal Rights, Simplified.</h1>
-  <p>Instant legal intelligence for Kenyans.</p>
-</div>
-
-<div class="category-selector">
-  <div class="cat-btn active" id="tenant-tab" onclick="switchCategory('tenant')">🏠 Tenant</div>
-  <div class="cat-btn" id="job-tab" onclick="switchCategory('employment')">💼 Job Law</div>
-</div>
-
-<div class="chat-container">
-  <div class="input-group">
-    <textarea id="question" placeholder="e.g. Can my landlord lock my door?" rows="1" oninput="autoResize(this)"></textarea>
-    <button class="ask-btn" onclick="getLegalAdvice()">Consult AI</button>
+<div class="content-wrapper">
+  <div class="navbar">
+    <div style="font-weight: bold; font-size: 1.2rem;">⚖️ SheriaHub</div>
+    <div style="font-size: 0.75rem; opacity: 0.8;">Kenya v2.5</div>
   </div>
-  <div id="response"></div>
-</div>
 
-<div class="features">
-  <div class="feature-box">
-    <h3>⚖️ Verified Statutes</h3>
-    <p>Based on the Employment Act & Rent Restriction Act.</p>
+  <div class="hero">
+    <h1>Your Legal Rights, Simplified.</h1>
+    <p>Instant legal intelligence for Kenyans.</p>
   </div>
-  <div class="feature-box">
-    <h3>🏛️ Tribunal Steps</h3>
-    <p>Clear guidance for Rent Board or Labour Courts.</p>
+
+  <div class="category-selector">
+    <div class="cat-btn active" id="tenant-tab" onclick="switchCategory('tenant')">🏠 Tenant</div>
+    <div class="cat-btn" id="job-tab" onclick="switchCategory('employment')">💼 Job Law</div>
+  </div>
+
+  <div class="chat-container">
+    <div class="input-group">
+      <textarea id="question" placeholder="e.g. Can my landlord lock my door?" rows="1" oninput="autoResize(this)"></textarea>
+      <button class="ask-btn" onclick="getLegalAdvice()">Consult AI</button>
+    </div>
+    <div id="response"></div>
+  </div>
+
+  <div class="features">
+    <div class="feature-box">
+      <h3>⚖️ Verified Statutes</h3>
+      <p>Based on the Employment Act & Rent Restriction Act.</p>
+    </div>
+    <div class="feature-box">
+      <h3>🏛️ Tribunal Steps</h3>
+      <p>Clear guidance for Rent Board or Labour Courts.</p>
+    </div>
   </div>
 </div>
 
@@ -227,7 +235,6 @@ let currentCategory = "tenant";
 let storedPaidContent = "";
 let currentPrice = 20;
 
-// Auto-resize logic for the textarea
 function autoResize(textarea) {
   textarea.style.height = 'auto';
   textarea.style.height = textarea.scrollHeight + 'px';
@@ -238,10 +245,7 @@ function switchCategory(cat) {
   document.getElementById('tenant-tab').classList.toggle('active', cat === 'tenant');
   document.getElementById('job-tab').classList.toggle('active', cat === 'employment');
   currentPrice = (cat === 'tenant') ? 20 : 50;
-  
-  // Update placeholder based on category
-  const area = document.getElementById("question");
-  area.placeholder = (cat === 'tenant') ? "e.g. Can my landlord lock my door?" : "e.g. I was dismissed without notice...";
+  document.getElementById("question").placeholder = (cat === 'tenant') ? "e.g. Can my landlord lock my door?" : "e.g. I was dismissed without notice...";
 }
 
 async function getLegalAdvice() {
@@ -294,13 +298,13 @@ async function handlePayment() {
     });
 
     const data = await res.json();
-    if (data.error) {
-      statusDiv.innerHTML = "❌ Failed. Check phone format.";
+    if (!data.checkout_id) {
+      statusDiv.innerHTML = "❌ Failed to initiate. Check backend.";
       return;
     }
 
     const checkoutId = data.checkout_id;
-    statusDiv.innerHTML = "⏳ Waiting for PIN entry...";
+    statusDiv.innerHTML = "⏳ Enter PIN on your phone...";
 
     const interval = setInterval(async () => {
       const check = await fetch(`${API}/check-payment/${checkoutId}`);
@@ -308,19 +312,20 @@ async function handlePayment() {
 
       if (result.status === "paid") {
         clearInterval(interval);
+        // Corrected targeting for the final response display
         document.getElementById("response").innerHTML = `
-          <h3>✅ Full Legal Answer</h3>
-          <p>${storedPaidContent.replace(/\n/g, '<br>')}</p>
+          <div style="background: #e7f9ee; border-left: 5px solid #27ae60; padding: 20px; border-radius: 10px;">
+            <h3>✅ Full Legal Answer Unlocked</h3>
+            <p>${storedPaidContent.replace(/\n/g, '<br>')}</p>
+          </div>
         `;
-      }
-
-      if (result.status === "failed") {
+      } else if (result.status === "failed") {
         clearInterval(interval);
         statusDiv.innerHTML = "❌ Payment failed.";
       }
     }, 3000);
   } catch (err) {
-    statusDiv.innerHTML = "❌ Payment error.";
+    statusDiv.innerHTML = "❌ Error connecting to payment system.";
   }
 }
 </script>
