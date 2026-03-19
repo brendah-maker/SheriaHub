@@ -3,11 +3,10 @@ import base64
 import datetime
 import requests
 import json
-import traceback
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from requests.auth import HTTPBasicAuth
-import google.generativeai as genai
+from google import genai  # Modern 2026 SDK
 
 # =========================
 # APP CONFIG
@@ -20,62 +19,37 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 CONSUMER_KEY = os.getenv("CONSUMER_KEY")
 CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
 
-# Safaricom Sandbox Constants
+# M-Pesa Constants
 BUSINESS_SHORT_CODE = "174379"
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 
 # =========================
 # AI INITIALIZATION
 # =========================
+client = None
 if GEMINI_API_KEY:
     try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        # Using the standard model name
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        print("✅ Sheria AI Initialized Successfully")
+        # Initialize the modern Gemini Client
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        print("✅ Sheria AI Initialized with Gemini 2.0 Flash")
     except Exception as e:
         print(f"❌ AI Init Error: {e}")
-        model = None
-else:
-    model = None
-    print("⚠️ WARNING: GEMINI_API_KEY not found!")
 
-# Simple in-memory storage for payments
+# In-memory storage for payment tracking
 payments = {}
-
-# =========================
-# HELPERS
-# =========================
-def get_mpesa_token():
-    try:
-        url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-        r = requests.get(url, auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET))
-        return r.json().get("access_token")
-    except:
-        return None
-
-def clean_ai_json(raw_text):
-    """Strips Markdown backticks and returns a clean dict."""
-    text = raw_text.strip()
-    if text.startswith("```"):
-        # Remove ```json and ```
-        text = text.split("```")[1]
-        if text.startswith("json"):
-            text = text[4:]
-    return json.loads(text.strip())
 
 # =========================
 # ROUTES
 # =========================
 
 @app.route('/')
-def health_check():
-    return jsonify({"status": "online", "ai_ready": model is not None})
+def home():
+    return jsonify({"status": "SheriaHub API Online", "ai_ready": client is not None})
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    if not model:
-        return jsonify({"free_summary": "AI is offline.", "paid_deep_dive": "Check API Key."})
+    if not client:
+        return jsonify({"error": "AI client not initialized"}), 500
 
     try:
         data = request.get_json()
@@ -83,60 +57,72 @@ def ask_ai():
         
         prompt = f"""
         Act as a Kenyan Landlord/Tenant legal expert. 
-        Refer to the Rent Restriction Act.
-        Return ONLY a JSON object with two keys: "free_summary" and "paid_deep_dive".
+        Focus on: Rent Restriction Act & Landlord/Tenant Bill 2021.
+        Return ONLY valid JSON with no markdown:
+        {{
+          "free_summary": "Short 2-3 sentence legal overview.",
+          "paid_deep_dive": "Step-by-step legal procedure with law citations."
+        }}
         Question: {question}
         """
 
-        response = model.generate_content(prompt)
-        ai_data = clean_ai_json(response.text)
-        return jsonify(ai_data)
+        # Calling Gemini 2.0 Flash (1.5 is likely 404 because it's retired)
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt
+        )
+        
+        # Clean response text (remove ```json wrappers if present)
+        text = response.text.replace("```json", "").replace("```", "").strip()
+        return jsonify(json.loads(text))
 
     except Exception as e:
-        print(f"AI Route Error: {e}")
+        print(f"❌ AI Route Error: {str(e)}")
         return jsonify({
-            "free_summary": "Consultation failed.", 
-            "paid_deep_dive": f"Technical issue: {str(e)}"
+            "free_summary": "Sheria AI is temporarily offline.",
+            "paid_deep_dive": f"Error: {str(e)}"
         })
 
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
-    token = get_mpesa_token()
-    if not token:
-        return jsonify({"error": "M-Pesa Auth Failed"}), 401
-
     try:
         data = request.get_json()
         phone = data.get("phone", "").strip().replace("+", "")
         if phone.startswith("0"): phone = "254" + phone[1:]
 
+        # Get Token
+        auth_url = "[https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials](https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials)"
+        auth_res = requests.get(auth_url, auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET))
+        token = auth_res.json().get("access_token")
+
+        # Prepare STK
         timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         password = base64.b64encode((BUSINESS_SHORT_CODE + PASSKEY + timestamp).encode()).decode()
 
-        payload = {
+        stk_payload = {
             "BusinessShortCode": BUSINESS_SHORT_CODE,
             "Password": password,
             "Timestamp": timestamp,
             "TransactionType": "CustomerPayBillOnline",
-            "Amount": 1, 
+            "Amount": 1,
             "PartyA": phone,
             "PartyB": BUSINESS_SHORT_CODE,
             "PhoneNumber": phone,
-            "CallBackURL": "https://sheriahub.onrender.com/callback",
+            "CallBackURL": "[https://sheriahub.onrender.com/callback](https://sheriahub.onrender.com/callback)",
             "AccountReference": "SheriaHub",
             "TransactionDesc": "Legal Advice"
         }
 
         headers = {"Authorization": f"Bearer {token}"}
-        res = requests.post("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest", json=payload, headers=headers)
-        res_json = res.json()
+        res = requests.post("[https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest](https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest)", json=stk_payload, headers=headers)
+        res_data = res.json()
         
-        checkout_id = res_json.get("CheckoutRequestID")
+        checkout_id = res_data.get("CheckoutRequestID")
         if checkout_id:
             payments[checkout_id] = {"status": "pending"}
             return jsonify({"checkout_id": checkout_id})
         
-        return jsonify({"error": "STK Failed", "details": res_json}), 400
+        return jsonify({"error": "STK Push failed", "details": res_data}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -149,12 +135,11 @@ def callback():
         code = stk["ResultCode"]
         if cid in payments:
             payments[cid]["status"] = "paid" if code == 0 else "failed"
-    except:
-        pass
-    return jsonify({"ResultCode": 0, "ResultDesc": "Accepted"})
+    except: pass
+    return jsonify({"ResultCode": 0, "ResultDesc": "Success"})
 
 @app.route('/check-payment/<checkout_id>')
-def check_payment(checkout_id):
+def check_status(checkout_id):
     return jsonify(payments.get(checkout_id, {"status": "not_found"}))
 
 if __name__ == '__main__':
