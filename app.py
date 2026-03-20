@@ -7,8 +7,8 @@ from groq import Groq
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-# Enable CORS for your GitHub Pages frontend
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Change this line in your app.py
+CORS(app, resources={r"/*": {"origins": ["https://www.sheriahub.co.ke", "https://sheriahub.co.ke"]}})
 
 # --- Database Configuration ---
 # On Render, the DATABASE_URL starts with 'postgres://', 
