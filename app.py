@@ -6,18 +6,11 @@ from flask_cors import CORS
 from groq import Groq
 from flask_sqlalchemy import SQLAlchemy
 
-// Replace with your actual Render URL
-const API_URL = "https://sheriahub.onrender.com/ask-ai"; 
 
-fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question: userQuestion })
-})
 
-// app = Flask(__name__)
-// # Change this line in your app.py
-// CORS(app, resources={r"/*": {"origins": ["https://www.sheriahub.co.ke", "https://sheriahub.co.ke"]}})
+ app = Flask(__name__)
+ # Change this line in your app.py
+CORS(app, resources={r"/*": {"origins": ["https://www.sheriahub.co.ke", "https://sheriahub.co.ke"]}})
 
 # --- Database Configuration ---
 # On Render, the DATABASE_URL starts with 'postgres://', 
