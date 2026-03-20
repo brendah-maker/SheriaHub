@@ -4,10 +4,31 @@ import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from groq import Groq
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 # Enable CORS for your GitHub Pages frontend
 CORS(app, resources={r"/*": {"origins": "*"}})
+
+# --- Database Configuration ---
+# On Render, the DATABASE_URL starts with 'postgres://', 
+# but SQLAlchemy needs 'postgresql://'. This fix ensures it works.
+uri = os.getenv("DATABASE_URL", "sqlite:///test.db")
+if uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = uri
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# Define the persistent Payment Table
+class Payment(db.Model):
+    id = db.Column(db.String(100), primary_key=True)  # Stores invoice_id
+    status = db.Column(db.String(20), default="pending")
+
+# Create the table if it doesn't exist
+with app.app_context():
+    db.create_all()
 
 # --- Configuration ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -20,12 +41,9 @@ BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# Memory-based tracker
-payments_db = {}
-
 @app.route('/')
 def health():
-    return jsonify({"status": "active", "region": "Kenya"}), 200
+    return jsonify({"status": "active", "region": "Kenya", "database": "connected"}), 200
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
@@ -36,12 +54,14 @@ def ask_ai():
         data = request.get_json()
         question = data.get("question", "")
         category = data.get("category", "tenant")
-        checkout_id = data.get("checkout_id")  # IMPORTANT: Frontend must send this
+        checkout_id = data.get("checkout_id")
 
-        # 1. Verify Payment Status
+        # 1. Verify Payment Status from PostgreSQL
         is_paid = False
-        if checkout_id and payments_db.get(checkout_id) == "paid":
-            is_paid = True
+        if checkout_id:
+            payment = Payment.query.get(checkout_id)
+            if payment and payment.status == "paid":
+                is_paid = True
 
         # 2. Define Legal Context
         if category == "employment":
@@ -64,7 +84,6 @@ def ask_ai():
             response_format={"type": "json_object"}
         )
         
-        # Parse result safely
         try:
             ai_raw = json.loads(completion.choices[0].message.content)
             summary = ai_raw.get("free_summary", "Summary unavailable.")
@@ -73,7 +92,7 @@ def ask_ai():
             summary = "Error parsing AI response."
             deep_dive = "Please contact support."
 
-        # 4. THE GATE: Only send deep_dive if paid
+        # 4. THE GATE
         return jsonify({
             "status": "premium" if is_paid else "free",
             "summary": summary,
@@ -112,10 +131,13 @@ def stk_push():
         invoice_id = res_data.get("invoice", {}).get("invoice_id")
         
         if invoice_id:
-            payments_db[invoice_id] = "pending"
+            # Save pending payment to PostgreSQL
+            new_payment = Payment(id=invoice_id, status="pending")
+            db.session.add(new_payment)
+            db.session.commit()
             return jsonify({"checkout_id": invoice_id})
         
-        return jsonify({"error": "M-Pesa push failed"}), 400
+        return jsonify({"error": "M-Pesa push failed", "details": res_data}), 400
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -125,26 +147,40 @@ def callback():
     data = request.get_json()
     invoice_id = data.get("invoice_id")
     state = data.get("state") 
+    
     if invoice_id and state == "COMPLETE":
-        payments_db[invoice_id] = "paid"
+        payment = Payment.query.get(invoice_id)
+        if payment:
+            payment.status = "paid"
+            db.session.commit()
+            print(f"✅ Payment {invoice_id} updated to PAID in DB")
+            
     return jsonify({"status": "received"}), 200
 
 @app.route('/check-payment/<checkout_id>')
 def check_payment(checkout_id):
-    status = payments_db.get(checkout_id)
-    if status == "paid":
+    payment = Payment.query.get(checkout_id)
+    
+    if payment and payment.status == "paid":
         return jsonify({"status": "paid"})
     
-    # Verification fallback
+    # Verification fallback (Check directly with IntaSend)
     try:
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
         res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
         if res.json().get("invoice", {}).get("state") == "COMPLETE":
-            payments_db[checkout_id] = "paid"
+            if payment:
+                payment.status = "paid"
+            else:
+                payment = Payment(id=checkout_id, status="paid")
+                db.session.add(payment)
+            db.session.commit()
             return jsonify({"status": "paid"})
     except:
         pass
-    return jsonify({"status": status or "pending"})
+        
+    return jsonify({"status": payment.status if payment else "pending"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
