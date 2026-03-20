@@ -6,10 +6,10 @@ from flask_cors import CORS
 from groq import Groq
 
 app = Flask(__name__)
-# Crucial for communication between GitHub Pages (Frontend) and Render (Backend)
+# Enable CORS for all routes to handle requests from your GitHub Pages frontend
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- Configuration (Set these in Render Environment Variables) ---
+# --- Configuration ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")
@@ -20,7 +20,7 @@ BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# Memory-based tracker for the current session
+# Memory-based tracker (Note: restarts wipe this; consider a DB for production)
 payments_db = {}
 
 @app.route('/')
@@ -28,29 +28,43 @@ def health():
     return jsonify({
         "status": "active",
         "provider": "IntaSend",
-        "model": "llama-3.3-70b-versatile"
+        "model": "llama-3.3-70b-versatile",
+        "region": "Kenya"
     }), 200
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client:
-        return jsonify({"error": "Missing AI API Key"}), 500
+        return jsonify({"error": "AI client not initialized"}), 500
+    
     try:
         data = request.get_json()
         question = data.get("question", "")
-        category = data.get("category", "tenant") 
+        category = data.get("category", "tenant") # Default to tenant
         
-        # Dynamically inject the right Kenyan legal statutes based on the frontend toggle
+        # Define high-authority legal contexts
         if category == "employment":
-            legal_context = "Focus specifically on the Employment Act 2007, the Labour Institutions Act, and the Industrial Court procedures."
+            legal_context = (
+                "You are an expert in Kenyan Employment Law. Use the Employment Act 2007, "
+                "Regulation of Wages and Conditions of Employment Act, and the Labour Institutions Act. "
+                "Mention the Ministry of Labour and the Employment and Labour Relations Court (ELRC)."
+            )
         else:
-            legal_context = "Focus specifically on the Rent Restriction Act, the Landlord and Tenant (Shops, Hotels and Catering Establishments) Act, and the Distress for Rent Act."
+            legal_context = (
+                "You are an expert in Kenyan Property and Tenancy Law. Use the Rent Restriction Act, "
+                "Landlord and Tenant (Shops, Hotels and Catering Establishments) Act, and the Distress for Rent Act. "
+                "Mention the Rent Restriction Tribunal (RRT) and the Business Premises Rent Tribunal (BPRT)."
+            )
             
         system_prompt = (
-            f"You are a strict Kenyan legal expert. {legal_context} "
+            f"{legal_context} "
             "You must return a valid JSON object with exactly two keys: "
-            "'free_summary' (a brief overview of rights) and "
-            "'paid_deep_dive' (detailed citations, tribunal steps, and legal action plan)."
+            "1. 'free_summary': A high-level, 3-sentence explanation of the user's rights. "
+            "2. 'paid_deep_dive': A comprehensive, high-value legal brief. This must include: "
+            "   - Specific Section citations from Kenyan law. "
+            "   - A step-by-step Action Plan (e.g., how to draft a demand letter). "
+            "   - Specific Tribunal or Office locations for filing complaints. "
+            "   - Possible outcomes and timelines. Make this content rich enough to justify a KSh 20 payment."
         )
 
         completion = client.chat.completions.create(
@@ -61,27 +75,32 @@ def ask_ai():
             ],
             response_format={"type": "json_object"}
         )
+        
         return jsonify(json.loads(completion.choices[0].message.content))
+        
     except Exception as e:
-        print(f"AI Generation Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        print(f"AI Error: {e}")
+        return jsonify({"error": "Failed to generate legal content"}), 500
 
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
         data = request.get_json()
-        
-        # Phone formatting to 254...
         phone = data.get("phone", "").strip().replace("+", "")
-        if phone.startswith("0"): phone = "254" + phone[1:]
         
-        # FORCED TO 1 KES FOR TESTING
+        # Ensure 254 format
+        if phone.startswith("0"): 
+            phone = "254" + phone[1:]
+        elif phone.startswith("7") or phone.startswith("1"):
+            phone = "254" + phone
+        
+        # KSh 20 charge for the deep dive
         payload = {
             "public_key": INTASEND_PUBLISHABLE_KEY,
-            "amount": 1, 
+            "amount": 20, 
             "phone_number": phone,
-            "email": data.get("email", "user@sheriahub.co.ke"),
-            "api_ref": "SheriaHub-Consultation",
+            "email": "user@sheriahub.co.ke",
+            "api_ref": "SheriaHub-Premium",
         }
 
         headers = {
@@ -97,53 +116,47 @@ def stk_push():
             payments_db[invoice_id] = "pending"
             return jsonify({"checkout_id": invoice_id})
         
-        return jsonify({"error": "M-Pesa request failed", "details": res_data}), 400
+        return jsonify({"error": "Could not initiate M-Pesa push", "details": res_data}), 400
         
     except Exception as e:
-        print(f"STK Push Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/callback', methods=['POST'])
 def callback():
-    """IntaSend Webhook Handler"""
+    """Receives payment updates from IntaSend Webhook"""
     data = request.get_json()
     invoice_id = data.get("invoice_id")
     state = data.get("state") 
 
-    if invoice_id:
-        # BUG FIX: Only update to 'paid' if it is complete. Do NOT overwrite with 'failed' on intermediate states.
-        if state == "COMPLETE":
-            payments_db[invoice_id] = "paid"
-            print(f"✅ WEBHOOK SUCCESS: {invoice_id} is now paid")
-        else:
-            print(f"ℹ️ WEBHOOK UPDATE: {invoice_id} is currently {state}")
+    if invoice_id and state == "COMPLETE":
+        payments_db[invoice_id] = "paid"
+        print(f"✅ Payment Verified: {invoice_id}")
+    elif invoice_id:
+        print(f"ℹ️ Transaction Update: {invoice_id} is {state}")
         
     return jsonify({"status": "received"}), 200
 
 @app.route('/check-payment/<checkout_id>')
 def check_payment(checkout_id):
-    """Refined status check"""
-    # 1. If we already know it's paid, return immediately
+    """Checks if the payment was successful"""
+    # Check local memory first
     status = payments_db.get(checkout_id)
     if status == "paid":
         return jsonify({"status": "paid"})
     
-    # 2. Always double-check with IntaSend API if not paid locally
+    # Backup: Double-check directly with IntaSend API
     try:
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
         res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
         if res.status_code == 200:
-            api_data = res.json().get("invoice", {})
-            api_state = api_data.get("state")
-            
-            # Use IntaSend's 'COMPLETE' state as the final truth
+            api_state = res.json().get("invoice", {}).get("state")
             if api_state == "COMPLETE":
                 payments_db[checkout_id] = "paid"
                 return jsonify({"status": "paid"})
             elif api_state in ["FAILED", "CANCELLED"]:
                 return jsonify({"status": "failed"})
     except Exception as e:
-        print(f"API Check Error: {e}")
+        print(f"Check Error: {e}")
 
     return jsonify({"status": status or "pending"})
 
