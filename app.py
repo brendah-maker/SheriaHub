@@ -6,13 +6,13 @@ from flask_cors import CORS
 from groq import Groq
 
 app = Flask(__name__)
-# Allows your GitHub Pages frontend to communicate with this Render backend
+# Crucial for communication between GitHub Pages (Frontend) and Render (Backend)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # --- Configuration (Set these in Render Environment Variables) ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
-INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")  # The 'API Token' from IntaSend
+INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")
 IS_SANDBOX = os.getenv("IS_SANDBOX", "True").lower() == "true"
 
 # IntaSend API Endpoints
@@ -20,7 +20,7 @@ BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# Ephemeral payment tracker (Note: This resets if Render service restarts)
+# Memory-based tracker for the current session
 payments_db = {}
 
 @app.route('/')
@@ -28,7 +28,6 @@ def health():
     return jsonify({
         "status": "active",
         "provider": "IntaSend",
-        "environment": "sandbox" if IS_SANDBOX else "production",
         "model": "llama-3.3-70b"
     }), 200
 
@@ -43,14 +42,12 @@ def ask_ai():
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile", 
             messages=[
-                {"role": "system", "content": "You are a Kenyan legal expert. Return a JSON object with two keys: 'free_summary' (concise advice) and 'paid_deep_dive' (detailed breakdown)."},
+                {"role": "system", "content": "You are a Kenyan legal expert. Return a JSON object with two keys: 'free_summary' and 'paid_deep_dive'."},
                 {"role": "user", "content": question}
             ],
             response_format={"type": "json_object"}
         )
-        # Parse the JSON string from Groq's response
-        response_content = json.loads(completion.choices[0].message.content)
-        return jsonify(response_content)
+        return jsonify(json.loads(completion.choices[0].message.content))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -59,11 +56,10 @@ def stk_push():
     try:
         data = request.get_json()
         
-        # Phone formatting (Ensure it starts with 254)
+        # Phone formatting to 254...
         phone = data.get("phone", "").strip().replace("+", "")
         if phone.startswith("0"): phone = "254" + phone[1:]
         
-        # IntaSend requires an email and amount
         # FORCED TO 1 KES FOR TESTING
         payload = {
             "public_key": INTASEND_PUBLISHABLE_KEY,
@@ -78,11 +74,8 @@ def stk_push():
             "Content-Type": "application/json"
         }
 
-        # IntaSend STK Push Endpoint
         response = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
         res_data = response.json()
-
-        # IntaSend returns an 'invoice' object containing the ID
         invoice_id = res_data.get("invoice", {}).get("invoice_id")
         
         if invoice_id:
@@ -98,12 +91,11 @@ def stk_push():
 def callback():
     """IntaSend Webhook Handler"""
     data = request.get_json()
-    
-    # IntaSend sends invoice_id and state (COMPLETE/FAILED)
     invoice_id = data.get("invoice_id")
     state = data.get("state") 
 
     if invoice_id:
+        # Update local memory: 'COMPLETE' -> 'paid', anything else -> 'failed'
         payments_db[invoice_id] = "paid" if state == "COMPLETE" else "failed"
         print(f"WEBHOOK UPDATE: {invoice_id} is now {payments_db[invoice_id]}")
         
@@ -111,32 +103,35 @@ def callback():
 
 @app.route('/check-payment/<checkout_id>')
 def check_payment(checkout_id):
-    """Checks the payment status, falling back to IntaSend API if not in memory"""
-    # 1. Check if we already have a 'paid' status in local memory
+    """
+    Refined status check:
+    1. Returns 'paid' immediately if already known.
+    2. Directly asks IntaSend API if local status is 'pending' or 'failed'.
+    """
+    # 1. If we already know it's paid, return immediately
     status = payments_db.get(checkout_id)
+    if status == "paid":
+        return jsonify({"status": "paid"})
     
-    # 2. If it's not 'paid', reach out to IntaSend directly to double-check
-    if status != "paid":
-        try:
-            headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
-            res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
-            if res.status_code == 200:
-                # IntaSend returns 'COMPLETE' for successful payments
-                state = res.json().get("invoice", {}).get("state")
-                if state == "COMPLETE":
-                    status = "paid"
-                    payments_db[checkout_id] = "paid" # Cache the success
-                elif state in ["FAILED", "CANCELLED"]:
-                    status = "failed"
-                else:
-                    status = "pending"
-        except Exception as e:
-            print(f"Error checking status with IntaSend: {e}")
-            status = status or "pending"
+    # 2. Always double-check with IntaSend API if not paid locally
+    try:
+        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
+        res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
+        if res.status_code == 200:
+            api_data = res.json().get("invoice", {})
+            api_state = api_data.get("state")
+            
+            # Use IntaSend's 'COMPLETE' state as the final truth
+            if api_state == "COMPLETE":
+                payments_db[checkout_id] = "paid"
+                return jsonify({"status": "paid"})
+            elif api_state in ["FAILED", "CANCELLED"]:
+                return jsonify({"status": "failed"})
+    except Exception as e:
+        print(f"API Check Error: {e}")
 
-    return jsonify({"status": status})
+    return jsonify({"status": status or "pending"})
 
 if __name__ == '__main__':
-    # Render dynamic port binding
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
