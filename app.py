@@ -6,10 +6,17 @@ from flask_cors import CORS
 from groq import Groq
 from flask_sqlalchemy import SQLAlchemy
 
-app = Flask(__name__, instance_path='/tmp')
+app = Flask(__name__)
 
- # Change this line in your app.py
-CORS(app, resources={r"/*": {"origins": ["https://www.sheriahub.co.ke", "https://sheriahub.co.ke"]}})
+# --- UPDATED CORS ---
+# Allow both your domain and any vercel preview links for testing
+CORS(app, resources={r"/*": {
+    "origins": [
+        "https://www.sheriahub.co.ke", 
+        "https://sheriahub.co.ke",
+        "https://sheriahub.vercel.app" # Add your Vercel project URL here too
+    ]
+}})
 
 # --- Database Configuration ---
 # On Render, the DATABASE_URL starts with 'postgres://', 
