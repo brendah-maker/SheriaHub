@@ -28,7 +28,7 @@ def health():
     return jsonify({
         "status": "active",
         "provider": "IntaSend",
-        "model": "llama-3.3-70b"
+        "model": "llama-3.3-70b-versatile"
     }), 200
 
 @app.route('/ask-ai', methods=['POST'])
@@ -38,17 +38,32 @@ def ask_ai():
     try:
         data = request.get_json()
         question = data.get("question", "")
+        category = data.get("category", "tenant") 
         
+        # Dynamically inject the right Kenyan legal statutes based on the frontend toggle
+        if category == "employment":
+            legal_context = "Focus specifically on the Employment Act 2007, the Labour Institutions Act, and the Industrial Court procedures."
+        else:
+            legal_context = "Focus specifically on the Rent Restriction Act, the Landlord and Tenant (Shops, Hotels and Catering Establishments) Act, and the Distress for Rent Act."
+            
+        system_prompt = (
+            f"You are a strict Kenyan legal expert. {legal_context} "
+            "You must return a valid JSON object with exactly two keys: "
+            "'free_summary' (a brief overview of rights) and "
+            "'paid_deep_dive' (detailed citations, tribunal steps, and legal action plan)."
+        )
+
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile", 
             messages=[
-                {"role": "system", "content": "You are a Kenyan legal expert. Return a JSON object with two keys: 'free_summary' and 'paid_deep_dive'."},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": question}
             ],
             response_format={"type": "json_object"}
         )
         return jsonify(json.loads(completion.choices[0].message.content))
     except Exception as e:
+        print(f"AI Generation Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/stkpush', methods=['POST'])
@@ -85,6 +100,7 @@ def stk_push():
         return jsonify({"error": "M-Pesa request failed", "details": res_data}), 400
         
     except Exception as e:
+        print(f"STK Push Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/callback', methods=['POST'])
@@ -95,19 +111,18 @@ def callback():
     state = data.get("state") 
 
     if invoice_id:
-        # Update local memory: 'COMPLETE' -> 'paid', anything else -> 'failed'
-        payments_db[invoice_id] = "paid" if state == "COMPLETE" else "failed"
-        print(f"WEBHOOK UPDATE: {invoice_id} is now {payments_db[invoice_id]}")
+        # BUG FIX: Only update to 'paid' if it is complete. Do NOT overwrite with 'failed' on intermediate states.
+        if state == "COMPLETE":
+            payments_db[invoice_id] = "paid"
+            print(f"✅ WEBHOOK SUCCESS: {invoice_id} is now paid")
+        else:
+            print(f"ℹ️ WEBHOOK UPDATE: {invoice_id} is currently {state}")
         
     return jsonify({"status": "received"}), 200
 
 @app.route('/check-payment/<checkout_id>')
 def check_payment(checkout_id):
-    """
-    Refined status check:
-    1. Returns 'paid' immediately if already known.
-    2. Directly asks IntaSend API if local status is 'pending' or 'failed'.
-    """
+    """Refined status check"""
     # 1. If we already know it's paid, return immediately
     status = payments_db.get(checkout_id)
     if status == "paid":
