@@ -3,3 +3,5 @@ Flask-CORS
 requests
 groq
 gunicorn
+psycopg2-binary
+SQLAlchemy
