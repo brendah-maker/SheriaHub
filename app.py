@@ -6,7 +6,7 @@ from flask_cors import CORS
 from groq import Groq
 
 app = Flask(__name__)
-# Enable CORS for all routes to handle requests from your GitHub Pages frontend
+# Enable CORS for your GitHub Pages frontend
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # --- Configuration ---
@@ -15,12 +15,11 @@ INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")
 IS_SANDBOX = os.getenv("IS_SANDBOX", "True").lower() == "true"
 
-# IntaSend API Endpoints
 BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# Memory-based tracker (Note: restarts wipe this; consider a DB for production)
+# Memory-based tracker for payments
 payments_db = {}
 
 @app.route('/')
@@ -40,33 +39,35 @@ def ask_ai():
     try:
         data = request.get_json()
         question = data.get("question", "")
-        category = data.get("category", "tenant") # Default to tenant
-        
-        # Define high-authority legal contexts
+        category = data.get("category", "tenant")
+        checkout_id = data.get("checkout_id") # Frontend sends this after payment
+
+        # 1. Check Payment Status
+        is_paid = False
+        if checkout_id and payments_db.get(checkout_id) == "paid":
+            is_paid = True
+
+        # 2. Define Legal Context
         if category == "employment":
             legal_context = (
-                "You are an expert in Kenyan Employment Law. Use the Employment Act 2007, "
-                "Regulation of Wages and Conditions of Employment Act, and the Labour Institutions Act. "
-                "Mention the Ministry of Labour and the Employment and Labour Relations Court (ELRC)."
+                "You are an expert in Kenyan Employment Law (Employment Act 2007). "
+                "Mention the Ministry of Labour and ELRC."
             )
         else:
             legal_context = (
-                "You are an expert in Kenyan Property and Tenancy Law. Use the Rent Restriction Act, "
-                "Landlord and Tenant (Shops, Hotels and Catering Establishments) Act, and the Distress for Rent Act. "
-                "Mention the Rent Restriction Tribunal (RRT) and the Business Premises Rent Tribunal (BPRT)."
+                "You are an expert in Kenyan Tenancy Law (Rent Restriction Act). "
+                "Mention the Rent Restriction Tribunal (RRT)."
             )
             
         system_prompt = (
             f"{legal_context} "
-            "You must return a valid JSON object with exactly two keys: "
-            "1. 'free_summary': A high-level, 3-sentence explanation of the user's rights. "
-            "2. 'paid_deep_dive': A comprehensive, high-value legal brief. This must include: "
-            "   - Specific Section citations from Kenyan law. "
-            "   - A step-by-step Action Plan (e.g., how to draft a demand letter). "
-            "   - Specific Tribunal or Office locations for filing complaints. "
-            "   - Possible outcomes and timelines. Make this content rich enough to justify a KSh 20 payment."
+            "Return a valid JSON object with exactly two keys: "
+            "1. 'free_summary': A STRICT single-sentence summary of the user's rights. "
+            "2. 'paid_deep_dive': A comprehensive legal brief with citations, sections, "
+            "and a step-by-step action plan. Use professional markdown formatting."
         )
 
+        # 3. Call AI
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile", 
             messages=[
@@ -76,10 +77,25 @@ def ask_ai():
             response_format={"type": "json_object"}
         )
         
-        return jsonify(json.loads(completion.choices[0].message.content))
+        ai_response = json.loads(completion.choices[0].message.content)
+
+        # 4. Gating Logic: Only send back what the user has paid for
+        if is_paid:
+            return jsonify({
+                "status": "premium",
+                "summary": ai_response.get("free_summary"),
+                "content": ai_response.get("paid_deep_dive")
+            })
+        else:
+            return jsonify({
+                "status": "free",
+                "summary": ai_response.get("free_summary"),
+                "content": "Unlock the full legal analysis and citations for KSh 20."
+            })
         
     except Exception as e:
         print(f"AI Error: {e}")
+        # If this fails, the frontend's 30s timeout will trigger "Request timed out"
         return jsonify({"error": "Failed to generate legal content"}), 500
 
 @app.route('/stkpush', methods=['POST'])
@@ -88,13 +104,11 @@ def stk_push():
         data = request.get_json()
         phone = data.get("phone", "").strip().replace("+", "")
         
-        # Ensure 254 format
         if phone.startswith("0"): 
             phone = "254" + phone[1:]
         elif phone.startswith("7") or phone.startswith("1"):
             phone = "254" + phone
         
-        # KSh 20 charge for the deep dive
         payload = {
             "public_key": INTASEND_PUBLISHABLE_KEY,
             "amount": 20, 
@@ -123,7 +137,6 @@ def stk_push():
 
 @app.route('/api/callback', methods=['POST'])
 def callback():
-    """Receives payment updates from IntaSend Webhook"""
     data = request.get_json()
     invoice_id = data.get("invoice_id")
     state = data.get("state") 
@@ -131,20 +144,15 @@ def callback():
     if invoice_id and state == "COMPLETE":
         payments_db[invoice_id] = "paid"
         print(f"✅ Payment Verified: {invoice_id}")
-    elif invoice_id:
-        print(f"ℹ️ Transaction Update: {invoice_id} is {state}")
-        
     return jsonify({"status": "received"}), 200
 
 @app.route('/check-payment/<checkout_id>')
 def check_payment(checkout_id):
-    """Checks if the payment was successful"""
-    # Check local memory first
     status = payments_db.get(checkout_id)
     if status == "paid":
         return jsonify({"status": "paid"})
     
-    # Backup: Double-check directly with IntaSend API
+    # Verify with API if local memory is out of sync
     try:
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
         res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
@@ -153,8 +161,6 @@ def check_payment(checkout_id):
             if api_state == "COMPLETE":
                 payments_db[checkout_id] = "paid"
                 return jsonify({"status": "paid"})
-            elif api_state in ["FAILED", "CANCELLED"]:
-                return jsonify({"status": "failed"})
     except Exception as e:
         print(f"Check Error: {e}")
 
