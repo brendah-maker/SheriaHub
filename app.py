@@ -1,49 +1,56 @@
 import os
 import json
-import base64
-import datetime
 import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from requests.auth import HTTPBasicAuth
 from groq import Groq
 
 app = Flask(__name__)
-# Crucial for cross-origin requests from GitHub Pages
+# Allows your GitHub Pages frontend to communicate with this Render backend
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Configuration
+# --- Configuration (Set these in Render Environment Variables) ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-CONSUMER_KEY = os.getenv("CONSUMER_KEY")
-CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
-BUSINESS_SHORT_CODE = "174379"
-PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
+INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")  # The 'API Token' from IntaSend
+IS_SANDBOX = os.getenv("IS_SANDBOX", "True").lower() == "true"
+
+# IntaSend API Endpoints
+BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# This is our payment tracker
+# Ephemeral payment tracker (Note: This resets if Render service restarts)
 payments_db = {}
 
 @app.route('/')
 def health():
-    return jsonify({"model": "llama-3.3-70b", "status": "active"}), 200
+    return jsonify({
+        "status": "active",
+        "provider": "IntaSend",
+        "environment": "sandbox" if IS_SANDBOX else "production",
+        "model": "llama-3.3-70b"
+    }), 200
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client:
-        return jsonify({"error": "Missing API Key"}), 500
+        return jsonify({"error": "Missing AI API Key"}), 500
     try:
         data = request.get_json()
         question = data.get("question", "")
+        
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile", 
             messages=[
-                {"role": "system", "content": "You are a Kenyan legal expert. Return JSON: {'free_summary': '...', 'paid_deep_dive': '...'}"},
+                {"role": "system", "content": "You are a Kenyan legal expert. Return a JSON object with two keys: 'free_summary' (concise advice) and 'paid_deep_dive' (detailed breakdown)."},
                 {"role": "user", "content": question}
             ],
             response_format={"type": "json_object"}
         )
-        return jsonify(json.loads(completion.choices[0].message.content))
+        # Parse the JSON string from Groq's response
+        response_content = json.loads(completion.choices[0].message.content)
+        return jsonify(response_content)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -51,63 +58,75 @@ def ask_ai():
 def stk_push():
     try:
         data = request.get_json()
+        
+        # Phone formatting (Ensure it starts with 254)
         phone = data.get("phone", "").strip().replace("+", "")
         if phone.startswith("0"): phone = "254" + phone[1:]
         
-        # Get Token
-        auth_res = requests.get("https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials", auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET))
-        access_token = auth_res.json().get("access_token")
-        
-        # Prepare STK
-        timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-        password = base64.b64encode((BUSINESS_SHORT_CODE + PASSKEY + timestamp).encode()).decode()
-        
-        stk_payload = {
-            "BusinessShortCode": BUSINESS_SHORT_CODE,
-            "Password": password,
-            "Timestamp": timestamp,
-            "TransactionType": "CustomerPayBillOnline",
-            "Amount": 1, # Testing with 1 bob
-            "PartyA": phone,
-            "PartyB": BUSINESS_SHORT_CODE,
-            "PhoneNumber": phone,
-            "CallBackURL": "https://sheriahub.onrender.com/api/callback",
-            "AccountReference": "SheriaHub",
-            "TransactionDesc": "Legal Advice"
+        # IntaSend requires an email and amount
+        payload = {
+            "public_key": INTASEND_PUBLISHABLE_KEY,
+            "amount": data.get("amount", 10), # Default 10 KES for testing
+            "phone_number": phone,
+            "email": data.get("email", "user@sheriahub.co.ke"),
+            "api_ref": "SheriaHub-Consultation",
         }
+
+        headers = {
+            "Authorization": f"Bearer {INTASEND_SECRET_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        # IntaSend STK Push Endpoint
+        response = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
+        res_data = response.json()
+
+        # IntaSend returns an 'invoice' object containing the ID
+        invoice_id = res_data.get("invoice", {}).get("invoice_id")
         
-        res = requests.post("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest", 
-                            json=stk_payload, 
-                            headers={"Authorization": f"Bearer {access_token}"})
+        if invoice_id:
+            payments_db[invoice_id] = "pending"
+            return jsonify({"checkout_id": invoice_id})
         
-        checkout_id = res.json().get("CheckoutRequestID")
-        if checkout_id:
-            payments_db[checkout_id] = "pending"
-            return jsonify({"checkout_id": checkout_id})
-        return jsonify({"error": "M-Pesa rejected"}), 400
+        return jsonify({"error": "M-Pesa request failed", "details": res_data}), 400
+        
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/callback', methods=['POST'])
 def callback():
-    # This matches your log entry
+    """IntaSend Webhook Handler"""
     data = request.get_json()
-    stk = data.get("Body", {}).get("stkCallback", {})
-    cid = stk.get("CheckoutRequestID")
-    code = stk.get("ResultCode")
     
-    if cid:
-        payments_db[cid] = "paid" if code == 0 else "failed"
-        print(f"Update: {cid} is now {payments_db[cid]}") # View this in Render Logs
+    # IntaSend sends invoice_id and state (COMPLETE/FAILED)
+    invoice_id = data.get("invoice_id")
+    state = data.get("state") 
+
+    if invoice_id:
+        payments_db[invoice_id] = "paid" if state == "COMPLETE" else "failed"
+        print(f"Payment Update: {invoice_id} is now {payments_db[invoice_id]}")
         
-    return jsonify({"ResultCode": 0})
+    return jsonify({"status": "received"}), 200
 
 @app.route('/check-payment/<checkout_id>')
 def check_payment(checkout_id):
-    # Retrieve status from the global dictionary
-    status = payments_db.get(checkout_id, "pending")
-    return jsonify({"status": status})
+    """Checks the payment status, falling back to IntaSend API if not in memory"""
+    status = payments_db.get(checkout_id)
+    
+    # If the app restarted and memory is empty, ask IntaSend directly
+    if not status:
+        try:
+            headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
+            res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
+            if res.status_code == 200:
+                state = res.json().get("invoice", {}).get("state")
+                status = "paid" if state == "COMPLETE" else "pending"
+        except:
+            status = "pending"
+
+    return jsonify({"status": status or "pending"})
 
 if __name__ == '__main__':
+    # Render dynamic port binding
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
