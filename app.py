@@ -6,9 +6,9 @@ from flask_cors import CORS
 from groq import Groq
 
 app = Flask(__name__)
+# Updated CORS to be more permissive for GitHub Pages
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- Configuration (Set these in Render Environment Variables) ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")
@@ -20,25 +20,35 @@ payments_db = {}
 
 @app.route('/')
 def health():
-    return jsonify({"status": "active", "model": "llama-3.3-70b"}), 200
+    return jsonify({"status": "active"}), 200
 
-@app.route('/ask-ai', methods=['POST'])
+@app.route('/ask-ai', methods=['POST', 'OPTIONS'])
 def ask_ai():
+    if request.method == 'OPTIONS':
+        return '', 200
+        
     if not client:
-        return jsonify({"error": "Missing AI API Key"}), 500
+        return jsonify({"error": "AI not configured"}), 500
+        
     try:
         data = request.get_json()
+        user_q = data.get("question", "General legal inquiry")
+        
+        # Using a reliable model with a clear system prompt
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile", 
+            model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": "You are a Kenyan legal expert. Return JSON: {'free_summary': '...', 'paid_deep_dive': '...'}"},
-                {"role": "user", "content": data.get("question", "")}
+                {"role": "system", "content": "Kenyan Legal Expert. Return ONLY JSON: {'free_summary': '...', 'paid_deep_dive': '...'}"},
+                {"role": "user", "content": user_q}
             ],
             response_format={"type": "json_object"}
         )
-        return jsonify(json.loads(completion.choices[0].message.content))
+        
+        ai_response = json.loads(completion.choices[0].message.content)
+        return jsonify(ai_response)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"AI ERROR: {str(e)}")
+        return jsonify({"error": "AI took too long or failed. Please try again."}), 500
 
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
@@ -47,7 +57,6 @@ def stk_push():
         phone = data.get("phone", "").strip().replace("+", "")
         if phone.startswith("0"): phone = "254" + phone[1:]
         
-        # FORCED TO 1 KES FOR TESTING
         payload = {
             "public_key": INTASEND_PUBLISHABLE_KEY,
             "amount": 1, 
@@ -64,39 +73,25 @@ def stk_push():
         if invoice_id:
             payments_db[invoice_id] = "pending"
             return jsonify({"checkout_id": invoice_id})
-        return jsonify({"error": "Failed", "details": res_data}), 400
+        return jsonify({"error": "Failed"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/callback', methods=['POST'])
-def callback():
-    data = request.get_json()
-    invoice_id = data.get("invoice_id")
-    state = data.get("state") 
-    if invoice_id:
-        payments_db[invoice_id] = "paid" if state == "COMPLETE" else "failed"
-    return jsonify({"status": "received"}), 200
-
 @app.route('/check-payment/<checkout_id>')
 def check_payment(checkout_id):
-    status = payments_db.get(checkout_id)
-    if status == "paid":
-        return jsonify({"status": "paid"})
-    
+    # Direct check against IntaSend API to ensure accuracy
     try:
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
         res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
         if res.status_code == 200:
             api_state = res.json().get("invoice", {}).get("state")
             if api_state == "COMPLETE":
-                payments_db[checkout_id] = "paid"
                 return jsonify({"status": "paid"})
             elif api_state in ["FAILED", "CANCELLED"]:
                 return jsonify({"status": "failed"})
     except:
         pass
-    return jsonify({"status": status or "pending"})
+    return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
