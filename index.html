@@ -24,22 +24,50 @@
 </head>
 <body>
 
-    <nav class="navbar">⚖️ SheriaHub Kenya</nav>
+    <nav class="navbar">
+        <div style="font-weight: bold; font-size: 1.4rem;">⚖️ SheriaHub</div>
+        <div style="font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 5px;">KENYA 🇰🇪</div>
+    </nav>
+
     <header class="hero">
-        <h1>Legal Intelligence</h1>
-        <p>Simplified for Citizens & Employees</p>
+        <h1>Your Legal Rights, Simplified.</h1>
+        <p>Instant legal intelligence for Citizens and Employees.</p>
     </header>
 
     <div class="category-selector">
-        <button class="cat-btn active" id="t-btn" onclick="setCat('tenant')">🏠 Tenant/Landlors Laws</button>
-        <button class="cat-btn" id="e-btn" onclick="setCat('employment')">💼 Employment Laws</button>
+        <button class="cat-btn active" id="tenant-tab" onclick="switchCategory('tenant')">🏠 Tenant/Landlord</button>
+        <button class="cat-btn" id="job-tab" onclick="switchCategory('employment')">💼 Employment Law</button>
     </div>
 
     <main class="chat-container">
-        <textarea id="q" placeholder="Ask your legal question..."></textarea>
-        <button class="ask-btn" id="askBtn" onclick="askAi()">Get AI Consultation</button>
-        <div id="res"></div>
+        <textarea id="question" placeholder="Ask about rent, deposits, or evictions..."></textarea>
+        <button class="ask-btn" id="askBtn" onclick="getLegalAdvice()">Get AI Consultation</button>
+        <div id="response"></div>
     </main>
+
+    <section class="features">
+        <div class="feature-box">
+            <h3>⚖️ Statutory Logic</h3>
+            <p>Our AI analyzes the Rent Restriction Act and Employment Act 2007 to give you accurate facts.</p>
+        </div>
+        <div class="feature-box">
+            <h3>🛡️ Protect Your Rights</h3>
+            <p>Know exactly what to say to a landlord or employer before a dispute escalates.</p>
+        </div>
+        <div class="feature-box">
+            <h3>💰 Unbeatable Value</h3>
+            <p>Professional legal summaries for free, and deep-dives for the price of a cup of tea (KSh 20).</p>
+        </div>
+    </section>
+
+    <div class="coming-soon">
+        <p>🚀 <strong>Coming Soon:</strong> Family Law, Small Claims Court Filing, and Business Registration Guides.</p>
+    </div>
+
+    <footer class="footer">
+        <p><strong>Disclaimer:</strong> This is an AI information tool, not professional legal advice.</p>
+        <p>© 2026 SheriaHub Kenya | Built for Justice</p>
+    </footer>
 
 <script>
     const API = "https://sheriahub.onrender.com"; // Update to your Render URL
