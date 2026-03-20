@@ -1,7 +1,6 @@
 Flask
-Flask-CORS
+flask-cors
+flask-sqlalchemy
+psycopg2-binary
 requests
 groq
-gunicorn
-psycopg2-binary
-SQLAlchemy
