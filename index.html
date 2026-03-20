@@ -24,7 +24,6 @@
         .hero h1 { margin: 0; font-size: 2rem; }
         .hero p { opacity: 0.9; margin-top: 10px; }
 
-        /* Push content to take available space so footer stays down */
         .main-content { flex: 1; display: flex; flex-direction: column; }
 
         /* Category Selector */
@@ -52,7 +51,7 @@
         
         .coming-soon { text-align: center; padding: 40px; opacity: 0.7; font-style: italic; background: #eaedf2; margin-top: 20px; width: 100%; box-sizing: border-box; }
 
-        /* Footer - Sticky to Bottom */
+        /* Footer */
         .footer { 
             background: var(--navy); 
             color: white; 
@@ -66,14 +65,11 @@
         }
         .footer p { margin: 5px 0; font-size: 0.9rem; line-height: 1.5; }
 
-        /* Mobile Adjustments */
         @media (max-width: 480px) {
             .hero h1 { font-size: 1.4rem; }
             .hero p { font-size: 0.9rem; }
             .cat-btn { font-size: 0.8rem; padding: 10px 12px; }
             .category-selector { gap: 5px; margin-top: -25px; }
-            .features { padding: 20px 5%; }
-            .footer p { font-size: 0.8rem; }
         }
     </style>
 </head>
@@ -130,12 +126,12 @@
     const API = "https://sheriahub.onrender.com"; 
     let cat = "tenant";
     let lastQ = "";
+    let paymentInterval = null; // To track and stop the payment checker
 
     function setCat(c) {
         cat = c;
         document.getElementById('t-btn').classList.toggle('active', c === 'tenant');
         document.getElementById('e-btn').classList.toggle('active', c === 'employment');
-        
         const qInput = document.getElementById("q");
         qInput.placeholder = (c === 'tenant') 
             ? "Ask about rent, deposits, or evictions..." 
@@ -154,15 +150,6 @@
         btn.disabled = true;
         resDiv.innerHTML = "<p id='msg' style='text-align:center;'>⏳ Sheria AI is pulling Kenyan law records...</p>";
 
-        const timer = setTimeout(() => {
-            const msg = document.getElementById('msg');
-            if(msg) {
-                msg.innerText = "Request timed out. Please try again.";
-                msg.style.color = "red";
-                btn.disabled = false;
-            }
-        }, 30000);
-
         try {
             const response = await fetch(`${API}/ask-ai`, {
                 method: "POST",
@@ -170,7 +157,6 @@
                 body: JSON.stringify({ question, category: cat, checkout_id: checkId })
             });
             
-            clearTimeout(timer);
             const data = await response.json();
 
             if (!data || !data.summary || data.summary === "undefined") {
@@ -188,13 +174,12 @@
                         <h4>🔒 Unlock Full Citations</h4>
                         <p>Get Acts & Steps for <strong>KSh 20</strong></p>
                         <input type="tel" id="phone" placeholder="0712345678" style="padding:10px; width:85%; max-width:300px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc;"><br>
-                        <button class="ask-btn" style="background:var(--gold);color:black;max-width:300px;" onclick="pay()">Pay via M-Pesa</button>
+                        <button class="ask-btn" style="background:var(--gold);color:black;max-width:300px;" id="payBtn" onclick="pay()">Pay via M-Pesa</button>
                         <div id="pStat" style="margin-top:10px; font-weight:bold;"></div>
                     </div>`;
             }
         } catch (e) {
-            clearTimeout(timer);
-            resDiv.innerHTML = "<p style='color:red;text-align:center;'>Request timed out. Please try again.</p>";
+            resDiv.innerHTML = "<p style='color:red;text-align:center;'>Server is taking too long. Please try again.</p>";
         } finally {
             btn.disabled = false;
         }
@@ -203,30 +188,70 @@
     async function pay() {
         const pInput = document.getElementById("phone").value;
         const pStat = document.getElementById("pStat");
+        const payBtn = document.getElementById("payBtn");
+
         if(!pInput) return alert("Please enter your M-Pesa phone number");
+        
+        // Clear any existing timers if user clicks again
+        if (paymentInterval) clearInterval(paymentInterval);
 
         pStat.innerText = "⏳ Sending STK Push...";
+        pStat.style.color = "black";
+        payBtn.disabled = true;
+
         try {
             const res = await fetch(`${API}/stkpush`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({ phone: pInput })
             });
-            const { checkout_id } = await res.json();
+            const data = await res.json();
+            const checkout_id = data.checkout_id;
 
-            const poller = setInterval(async () => {
-                const check = await fetch(`${API}/check-payment/${checkout_id}`);
-                const r = await check.json();
-                if (r.status === "paid") {
-                    clearInterval(poller);
-                    pStat.innerText = "✅ Paid! Unlocking content...";
-                    pStat.style.color = "green";
-                    askAi(checkout_id);
+            // FIX: If we don't have a checkout_id, stop immediately.
+            if (!checkout_id) {
+                pStat.innerText = "❌ M-Pesa Request Failed. Verify your number.";
+                pStat.style.color = "red";
+                payBtn.disabled = false;
+                return;
+            }
+
+            pStat.innerText = "📩 Check your phone for the M-Pesa prompt...";
+
+            let attempts = 0;
+            const maxAttempts = 30; // 30 attempts * 4 seconds = 2 minutes timeout
+
+            paymentInterval = setInterval(async () => {
+                attempts++;
+                
+                // TIMEOUT LOGIC
+                if (attempts >= maxAttempts) {
+                    clearInterval(paymentInterval);
+                    pStat.innerText = "❌ Payment Timed Out. Please try clicking pay again.";
+                    pStat.style.color = "red";
+                    payBtn.disabled = false;
+                    return;
+                }
+
+                try {
+                    const check = await fetch(`${API}/check-payment/${checkout_id}`);
+                    const r = await check.json();
+                    
+                    if (r.status === "paid") {
+                        clearInterval(paymentInterval);
+                        pStat.innerText = "✅ Paid! Unlocking content...";
+                        pStat.style.color = "green";
+                        askAi(checkout_id);
+                    }
+                } catch (e) {
+                    console.error("Polling error");
                 }
             }, 4000);
+
         } catch (e) { 
-            pStat.innerText = "❌ Payment failed. Check your connection."; 
+            pStat.innerText = "❌ Connection failed. Check your internet."; 
             pStat.style.color = "red";
+            payBtn.disabled = false;
         }
     }
 </script>
