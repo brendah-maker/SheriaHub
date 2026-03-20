@@ -64,9 +64,10 @@ def stk_push():
         if phone.startswith("0"): phone = "254" + phone[1:]
         
         # IntaSend requires an email and amount
+        # FORCED TO 1 KES FOR TESTING
         payload = {
             "public_key": INTASEND_PUBLISHABLE_KEY,
-            "amount": data.get("amount", 1), # Default 10 KES for testing
+            "amount": 1, 
             "phone_number": phone,
             "email": data.get("email", "user@sheriahub.co.ke"),
             "api_ref": "SheriaHub-Consultation",
@@ -104,27 +105,36 @@ def callback():
 
     if invoice_id:
         payments_db[invoice_id] = "paid" if state == "COMPLETE" else "failed"
-        print(f"Payment Update: {invoice_id} is now {payments_db[invoice_id]}")
+        print(f"WEBHOOK UPDATE: {invoice_id} is now {payments_db[invoice_id]}")
         
     return jsonify({"status": "received"}), 200
 
 @app.route('/check-payment/<checkout_id>')
 def check_payment(checkout_id):
     """Checks the payment status, falling back to IntaSend API if not in memory"""
+    # 1. Check if we already have a 'paid' status in local memory
     status = payments_db.get(checkout_id)
     
-    # If the app restarted and memory is empty, ask IntaSend directly
-    if not status:
+    # 2. If it's not 'paid', reach out to IntaSend directly to double-check
+    if status != "paid":
         try:
             headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
             res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
             if res.status_code == 200:
+                # IntaSend returns 'COMPLETE' for successful payments
                 state = res.json().get("invoice", {}).get("state")
-                status = "paid" if state == "COMPLETE" else "pending"
-        except:
-            status = "pending"
+                if state == "COMPLETE":
+                    status = "paid"
+                    payments_db[checkout_id] = "paid" # Cache the success
+                elif state in ["FAILED", "CANCELLED"]:
+                    status = "failed"
+                else:
+                    status = "pending"
+        except Exception as e:
+            print(f"Error checking status with IntaSend: {e}")
+            status = status or "pending"
 
-    return jsonify({"status": status or "pending"})
+    return jsonify({"status": status})
 
 if __name__ == '__main__':
     # Render dynamic port binding
