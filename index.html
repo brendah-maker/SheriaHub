@@ -20,17 +20,10 @@
         .input-group { display: flex; flex-direction: column; gap: 10px; }
         @media (min-width: 600px) { .input-group { flex-direction: row; align-items: flex-start; } }
         textarea { flex-grow: 1; min-height: 54px; padding: 15px; border-radius: 10px; border: 2px solid #ddd; font-size: 16px; font-family: inherit; resize: none; overflow: hidden; box-sizing: border-box; }
-        textarea:focus { outline: none; border-color: var(--gold); }
-        .ask-btn { padding: 15px 25px; background: var(--navy); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 1rem; display: flex; justify-content: center; align-items: center; gap: 10px; transition: 0.2s; }
+        .ask-btn { padding: 15px 25px; background: var(--navy); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.2s; }
         .ask-btn:disabled { opacity: 0.7; cursor: not-allowed; }
-        .spinner { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s linear infinite; display: none; }
-        @keyframes spin { to { transform: rotate(360deg); } }
         #response { margin-top: 25px; line-height: 1.6; }
         .paywall { background: #fffdf2; border: 2px dashed var(--gold); padding: 25px; border-radius: 12px; margin-top: 20px; text-align: center; }
-        .features { display: grid; grid-template-columns: 1fr; gap: 20px; padding: 20px 5%; max-width: 1000px; margin: 0 auto; }
-        @media (min-width: 600px) { .features { grid-template-columns: 1fr 1fr; } }
-        .feature-box { background: white; padding: 25px; border-radius: 12px; text-align: center; border-bottom: 4px solid var(--gold); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        .ai-preview { max-width: 90%; width: 700px; margin: 40px auto; text-align: center; padding: 30px; background: #eef2f7; border-radius: 15px; border: 1px solid #cbd5e1; }
         .footer { flex-shrink: 0; background: var(--navy); color: white; text-align: center; padding: 40px 20px; border-top: 5px solid var(--gold); font-size: 0.85rem; }
     </style>
 </head>
@@ -54,30 +47,11 @@
 
     <main class="chat-container">
         <div class="input-group">
-            <textarea id="question" placeholder="e.g. Can my landlord lock my door?" rows="1" oninput="autoResize(this)"></textarea>
-            <button class="ask-btn" id="askBtn" onclick="getLegalAdvice()">
-                <span id="btnText">Consult AI</span>
-                <div class="spinner" id="askSpinner"></div>
-            </button>
+            <textarea id="question" placeholder="e.g. Can my landlord lock my door?" rows="1"></textarea>
+            <button class="ask-btn" id="askBtn" onclick="getLegalAdvice()">Consult AI</button>
         </div>
         <div id="response"></div>
     </main>
-
-    <section class="features">
-        <div class="feature-box">
-            <h3 style="color:var(--navy);">⚖️ Verified Statutes</h3>
-            <p>Answers based on the Employment Act and the Rent Restriction Act of Kenya.</p>
-        </div>
-        <div class="feature-box">
-            <h3 style="color:var(--navy);">🏛️ Tribunal Guide</h3>
-            <p>Get actionable steps for the Rent Tribunal (RTB) or the Labour Relations Court.</p>
-        </div>
-    </section>
-
-    <aside class="ai-preview">
-        <h3 style="margin-top:0;">🚀 Coming Soon: Document Review</h3>
-        <p>Upload your Lease or Employment Contract and Sheria AI will highlight unfair clauses.</p>
-    </aside>
 </div>
 
 <footer class="footer">
@@ -89,12 +63,6 @@
     const API = "https://sheriahub.onrender.com"; 
     let currentCategory = "tenant";
     let storedPaidContent = "";
-    let currentPrice = 1; // Forced to 1 bob for testing
-
-    function autoResize(textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
-    }
 
     function switchCategory(cat) {
         currentCategory = cat;
@@ -106,12 +74,9 @@
         const q = document.getElementById("question").value;
         const resDiv = document.getElementById("response");
         const btn = document.getElementById("askBtn");
-        const spinner = document.getElementById("askSpinner");
-
         if (!q) return;
 
         btn.disabled = true;
-        spinner.style.display = "block";
         resDiv.innerHTML = "<p style='text-align:center;'>⏳ Sheria AI is analyzing Kenyan statutes...</p>";
 
         try {
@@ -130,17 +95,13 @@
                 <div class="paywall">
                     <h4>🔒 Unlock Professional Action Plan</h4>
                     <p>Get law citations for <strong>KSh 1</strong>.</p>
-                    <button class="ask-btn" id="payBtn" style="background:var(--gold); color:black; width:100%;" onclick="handlePayment()">
-                        <span id="payText">Pay via M-Pesa</span>
-                        <div class="spinner" id="paySpinner" style="border-top-color:#000;"></div>
-                    </button>
+                    <button class="ask-btn" id="payBtn" style="background:var(--gold); color:black; width:100%;" onclick="handlePayment()">Pay via M-Pesa</button>
                     <div id="pStatus" style="margin-top:10px; font-weight:bold; color:var(--navy);"></div>
                 </div>`;
         } catch (e) {
             resDiv.innerHTML = "<p style='color:red; text-align:center;'>❌ Connection failed.</p>";
         } finally {
             btn.disabled = false;
-            spinner.style.display = "none";
         }
     }
 
@@ -150,10 +111,8 @@
         
         const statusDiv = document.getElementById("pStatus");
         const payBtn = document.getElementById("payBtn");
-        const paySpinner = document.getElementById("paySpinner");
 
         payBtn.disabled = true;
-        paySpinner.style.display = "block";
         statusDiv.innerHTML = "⏳ Sending M-Pesa Request...";
 
         try {
@@ -180,15 +139,14 @@
                             <p>${storedPaidContent.replace(/\n/g, '<br>')}</p>
                         </div>`;
                 } 
-                // Ignore failure signals for at least 32 seconds (8 attempts)
+                // Ignore failure signals for the first 30 seconds (8 attempts)
                 else if (result.status === "failed" && attempts > 8) {
                     clearInterval(interval);
                     statusDiv.innerHTML = "❌ Payment failed or cancelled.";
                     payBtn.disabled = false;
-                    paySpinner.style.display = "none";
                 }
                 
-                if (attempts >= 15) { // Timeout after 60 seconds
+                if (attempts >= 15) { 
                     clearInterval(interval);
                     statusDiv.innerHTML = "⚠️ Timeout. Refresh if you paid.";
                     payBtn.disabled = false;
