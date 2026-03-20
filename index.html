@@ -3,171 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SheriaHub - Kenya's Legal AI Consultation</title>
+    <title>SheriaHub - Kenya's Legal AI</title>
     <style>
-        :root { 
-            --navy: #0a1f44; 
-            --gold: #f39c12; 
-            --bg: #f4f7f6; 
-            --white: #ffffff;
-            --text-main: #333333;
-            --gray-light: #e2e8f0;
-        }
-        
-        * { box-sizing: border-box; }
+        :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f5f7fa; --white: #ffffff; }
         html, body { height: 100%; margin: 0; }
-        body { 
-            display: flex; 
-            flex-direction: column; 
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
-            background: var(--bg); 
-            color: var(--text-main); 
-        }
-
-        /* Navbar & Hero */
+        body { display: flex; flex-direction: column; font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: #333; }
         .navbar { background: var(--navy); color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--gold); }
-        .hero { background: var(--navy); color: white; text-align: center; padding: 40px 20px 70px; }
-        .hero h1 { margin: 0; font-size: clamp(1.8rem, 5vw, 2.5rem); letter-spacing: -0.5px; }
-        .hero p { opacity: 0.85; margin-top: 10px; font-size: 1.1rem; }
-
-        /* Main Content Layout */
-        .main-content { flex: 1 0 auto; padding-bottom: 40px; }
+        .hero { background: var(--navy); color: white; text-align: center; padding: 40px 20px 80px; }
         
-        /* Category Selector */
-        .category-selector { display: flex; justify-content: center; gap: 15px; margin: -25px auto 30px; padding: 0 15px; }
-        .cat-btn { 
-            flex: 1; 
-            max-width: 200px; 
-            padding: 12px 15px; 
-            border-radius: 8px; 
-            border: 2px solid var(--gold); 
-            background: var(--white); 
-            cursor: pointer; 
-            font-weight: 600; 
-            font-size: 0.95rem; 
-            transition: all 0.2s ease; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
-        }
-        .cat-btn.active { background: var(--gold); color: var(--navy); }
-        .cat-btn:hover:not(.active) { background: #fffdf5; }
+        .category-selector { display: flex; justify-content: center; gap: 10px; margin: -30px auto 20px; padding: 0 15px; }
+        .cat-btn { flex: 1; max-width: 200px; padding: 12px; border-radius: 25px; border: 2px solid var(--gold); background: var(--white); cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .cat-btn.active { background: var(--gold); color: black; }
 
-        /* Consultation Interface */
-        .consultation-container { 
-            max-width: 90%; 
-            width: 750px; 
-            margin: 0 auto; 
-            background: var(--white); 
-            border-radius: 12px; 
-            padding: 30px; 
-            box-shadow: 0 8px 24px rgba(0,0,0,0.08); 
-            border: 1px solid var(--gray-light); 
-        }
+        .chat-container { max-width: 90%; width: 700px; margin: 0 auto 40px; background: var(--white); border-radius: 15px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        textarea { width: 100%; min-height: 80px; padding: 15px; border-radius: 10px; border: 2px solid #ddd; font-size: 16px; margin-bottom: 10px; resize: none; box-sizing: border-box;}
+        .ask-btn { width: 100%; padding: 15px; background: var(--navy); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 1rem; }
         
-        .input-group { display: flex; flex-direction: column; gap: 15px; }
-        textarea { 
-            width: 100%; 
-            min-height: 100px; 
-            padding: 15px; 
-            border-radius: 8px; 
-            border: 2px solid var(--gray-light); 
-            font-size: 1rem; 
-            font-family: inherit; 
-            resize: vertical; 
-            transition: border-color 0.2s;
-        }
-        textarea:focus { outline: none; border-color: var(--navy); }
+        /* Features & Coming Soon */
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; padding: 20px 5%; max-width: 1100px; margin: 0 auto; }
+        .feature-box { background: white; padding: 25px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-top: 4px solid var(--gold); }
+        .coming-soon { text-align: center; padding: 40px; opacity: 0.7; font-style: italic; }
+
+        /* Results */
+        .legal-card { padding: 20px; border-left: 5px solid var(--navy); background: #f9fafb; margin-top: 20px; border-radius: 8px; }
+        .paywall { background: #fffdf2; border: 2px dashed var(--gold); padding: 25px; border-radius: 12px; margin-top: 20px; text-align: center; }
+        .premium-content { background: #eefdf3; border: 2px solid #27ae60; padding: 25px; border-radius: 12px; margin-top: 20px; line-height: 1.8; }
         
-        .ask-btn { 
-            padding: 14px 24px; 
-            background: var(--navy); 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            font-size: 1rem; 
-            transition: opacity 0.2s; 
-            align-self: flex-end;
-        }
-        .ask-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-        /* Results & Paywall Styling */
-        #response-area { margin-top: 30px; }
-        
-        .legal-summary {
-            padding: 20px; 
-            border-left: 5px solid var(--navy); 
-            background: #f8fafc; 
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 20px;
-            line-height: 1.6;
-        }
-        .legal-summary h3 { margin-top: 0; color: var(--navy); font-size: 1.2rem; }
-
-        .paywall-card { 
-            background: #fffcf0; 
-            border: 2px dashed var(--gold); 
-            padding: 25px; 
-            border-radius: 8px; 
-            text-align: center; 
-        }
-        .paywall-card h4 { margin: 0 0 10px 0; font-size: 1.2rem; color: var(--navy); }
-        
-        .phone-input {
-            width: 100%;
-            max-width: 300px;
-            padding: 12px;
-            margin: 15px 0;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 1rem;
-            text-align: center;
-        }
-
-        .premium-content {
-            background: #f0fdf4; 
-            border-left: 5px solid #16a34a; 
-            padding: 20px; 
-            border-radius: 0 8px 8px 0; 
-            margin-top:20px;
-            line-height: 1.6;
-        }
-
-        /* Footer */
-        .footer { flex-shrink: 0; background: var(--navy); color: white; text-align: center; padding: 25px 20px; border-top: 4px solid var(--gold); font-size: 0.85rem; }
+        .footer { background: var(--navy); color: white; text-align: center; padding: 40px 20px; border-top: 5px solid var(--gold); margin-top: auto; }
     </style>
 </head>
 <body>
 
-<div class="main-content">
     <nav class="navbar">
-        <div style="font-weight: 700; font-size: 1.3rem;">⚖️ SheriaHub</div>
-        <div style="font-size: 0.85rem; font-weight: 500;">Kenya 🇰🇪</div>
+        <div style="font-weight: bold; font-size: 1.4rem;">⚖️ SheriaHub</div>
+        <div style="font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 5px;">KENYAN LAW AI</div>
     </nav>
 
     <header class="hero">
-        <h1>Legal clarity, in seconds.</h1>
-        <p>Expert-level insights for Tenants, Landlords, and Employees.</p>
+        <h1>Your Legal Rights, Simplified.</h1>
+        <p>Instant legal intelligence for Citizens and Employees.</p>
     </header>
 
     <div class="category-selector">
         <button class="cat-btn active" id="tenant-tab" onclick="switchCategory('tenant')">🏠 Tenant/Landlord</button>
-        <button class="cat-btn" id="job-tab" onclick="switchCategory('employment')">💼 Employment</button>
+        <button class="cat-btn" id="job-tab" onclick="switchCategory('employment')">💼 Employment Law</button>
     </div>
 
-    <main class="consultation-container">
-        <div class="input-group">
-            <textarea id="question" placeholder="Describe your legal issue here... (e.g., 'My landlord locked my door because I am two days late on rent. What are my rights?')"></textarea>
-            <button class="ask-btn" id="askBtn" onclick="getLegalAdvice()">Analyze Case</button>
-        </div>
-        <div id="response-area"></div>
+    <main class="chat-container">
+        <textarea id="question" placeholder="Ask about rent, deposits, or evictions..."></textarea>
+        <button class="ask-btn" id="askBtn" onclick="getLegalAdvice()">Get AI Consultation</button>
+        <div id="response"></div>
     </main>
-</div>
 
-<footer class="footer">
-    <p><strong>Disclaimer:</strong> SheriaHub provides AI-generated legal information, not formal legal representation.</p>
-    <p>© 2026 SheriaHub Kenya</p>
-</footer>
+    <section class="features">
+        <div class="feature-box">
+            <h3>⚖️ Statutory Logic</h3>
+            <p>Our AI analyzes the Rent Restriction Act and Employment Act 2007 to give you accurate facts.</p>
+        </div>
+        <div class="feature-box">
+            <h3>🛡️ Protect Your Rights</h3>
+            <p>Know exactly what to say to a landlord or employer before a dispute escalates.</p>
+        </div>
+        <div class="feature-box">
+            <h3>💰 Unbeatable Value</h3>
+            <p>Professional legal summaries for free, and deep-dives for the price of a cup of tea (KSh 20).</p>
+        </div>
+    </section>
+
+    <div class="coming-soon">
+        <p>🚀 <strong>Coming Soon:</strong> Family Law, Small Claims Court Filing, and Business Registration Guides.</p>
+    </div>
+
+    <footer class="footer">
+        <p><strong>Disclaimer:</strong> This is an AI information tool, not professional legal advice.</p>
+        <p>© 2026 SheriaHub Kenya | Built for Justice</p>
+    </footer>
 
 <script>
     const API = "https://sheriahub.onrender.com"; 
@@ -176,23 +86,22 @@
 
     function switchCategory(cat) {
         currentCategory = cat;
+        const input = document.getElementById('question');
         document.getElementById('tenant-tab').classList.toggle('active', cat === 'tenant');
         document.getElementById('job-tab').classList.toggle('active', cat === 'employment');
+        
+        // Dynamic Placeholder Logic
+        input.placeholder = (cat === 'tenant') 
+            ? "e.g. Can my landlord increase rent without notice?" 
+            : "e.g. What are my rights if I am dismissed without notice?";
     }
 
     async function getLegalAdvice() {
-        const q = document.getElementById("question").value.trim();
-        const resDiv = document.getElementById("response-area");
-        const btn = document.getElementById("askBtn");
-        
-        if (!q) {
-            alert("Please describe your legal issue first.");
-            return;
-        }
+        const q = document.getElementById("question").value;
+        const resDiv = document.getElementById("response");
+        if (!q) return;
 
-        btn.disabled = true;
-        btn.innerText = "Analyzing...";
-        resDiv.innerHTML = "<p style='text-align:center; color: #666;'>⏳ Reviewing Kenyan statutes and tribunals...</p>";
+        resDiv.innerHTML = "<p style='text-align:center;'>⏳ Sheria AI is pulling Kenyan law records...</p>";
 
         try {
             const res = await fetch(`${API}/ask-ai`, {
@@ -201,109 +110,55 @@
                 body: JSON.stringify({ question: q, category: currentCategory })
             });
 
-            if (!res.ok) throw new Error("Server responded with an error.");
-            
             const data = await res.json();
-            
-            if (data.error) throw new Error(data.error);
-
             storedPaidContent = data.paid_deep_dive;
             
             resDiv.innerHTML = `
-                <div class="legal-summary">
-                    <h3>Preliminary Assessment</h3>
-                    <p>${data.free_summary.replace(/\n/g, '<br>')}</p>
+                <div class="legal-card">
+                    <strong style="color:var(--navy);">Quick Assessment:</strong><br>${data.free_summary}
                 </div>
-                <div class="paywall-card">
-                    <h4>🔒 Unlock Professional Action Plan</h4>
-                    <p>Get specific law citations, next steps, and tribunal procedures for <strong>KSh 20</strong>.</p>
-                    <input type="tel" id="mpesaPhone" class="phone-input" placeholder="07XX XXX XXX" maxlength="13">
-                    <br>
-                    <button class="ask-btn" id="payBtn" style="background:var(--gold); color:var(--navy); width:100%; max-width: 300px;" onclick="handlePayment()">Pay via M-Pesa</button>
-                    <div id="pStatus" style="margin-top:15px; font-weight:600; color:var(--navy);"></div>
+                <div class="paywall" id="pay-section">
+                    <h4>🔒 Unlock The Professional Deep-Dive</h4>
+                    <p>Get **Statutes**, **Law Citations**, and a **Step-by-Step Action Plan** for only <strong>KSh 20</strong>.</p>
+                    <input type="tel" id="userPhone" placeholder="0712345678" style="padding:10px; border-radius:5px; border:1px solid #ccc; margin-bottom:10px;"><br>
+                    <button class="ask-btn" id="payBtn" style="background:var(--gold); color:black;" onclick="handlePayment()">Pay KSh 20 via M-Pesa</button>
+                    <div id="pStatus" style="margin-top:10px; font-weight:bold;"></div>
                 </div>`;
         } catch (e) {
-            console.error(e);
-            resDiv.innerHTML = `<p style='color:#dc2626; text-align:center; padding: 20px;'>❌ Unable to process request: ${e.message}</p>`;
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "Analyze Case";
+            resDiv.innerHTML = "<p style='color:red;'>❌ Server connection failed.</p>";
         }
     }
 
     async function handlePayment() {
-        const phoneInput = document.getElementById("mpesaPhone").value.trim();
+        const phone = document.getElementById("userPhone").value;
         const statusDiv = document.getElementById("pStatus");
-        const payBtn = document.getElementById("payBtn");
+        if(!phone) { alert("Please enter your phone number"); return; }
 
-        if (!phoneInput || phoneInput.length < 9) {
-            statusDiv.innerHTML = "⚠️ Please enter a valid Safaricom number.";
-            statusDiv.style.color = "#dc2626";
-            return;
-        }
-
-        payBtn.disabled = true;
-        statusDiv.style.color = "var(--navy)";
         statusDiv.innerHTML = "⏳ Sending M-Pesa Request...";
 
         try {
             const res = await fetch(`${API}/stkpush`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ phone: phoneInput })
+                body: JSON.stringify({ phone: phone })
             });
-
             const data = await res.json();
-            
-            if (data.error) throw new Error(data.error);
-
-            statusDiv.innerHTML = "📲 STK Push sent. Please enter your M-Pesa PIN...";
-
-            let attempts = 0;
-            const maxAttempts = 15; // 60 seconds total
 
             const interval = setInterval(async () => {
-                attempts++;
-                try {
-                    const check = await fetch(`${API}/check-payment/${data.checkout_id}`);
-                    const result = await check.json();
+                const check = await fetch(`${API}/check-payment/${data.checkout_id}`);
+                const result = await check.json();
 
-                    if (result.status === "paid") {
-                        clearInterval(interval);
-                        document.querySelector('.paywall-card').style.display = 'none';
-                        document.getElementById("response-area").innerHTML += `
-                            <div class="premium-content" id="premium-view">
-                                <h3 style="margin-top:0; color: #166534;">✅ Action Plan & Citations</h3>
-                                <p>${storedPaidContent.replace(/\n/g, '<br>')}</p>
-                            </div>`;
-                        // Scroll to the new content
-                        document.getElementById('premium-view').scrollIntoView({ behavior: 'smooth' });
-                    } 
-                    else if (result.status === "failed" && attempts > 4) {
-                        // Give the user a grace period before declaring failure
-                        clearInterval(interval);
-                        statusDiv.innerHTML = "❌ Payment failed or was cancelled.";
-                        statusDiv.style.color = "#dc2626";
-                        payBtn.disabled = false;
-                        payBtn.innerText = "Try Again";
-                    }
-                    else if (attempts >= maxAttempts) { 
-                        clearInterval(interval);
-                        statusDiv.innerHTML = "⚠️ Request timed out. If you paid, please refresh.";
-                        statusDiv.style.color = "#b45309";
-                        payBtn.disabled = false;
-                        payBtn.innerText = "Verify Payment";
-                    }
-                } catch (checkErr) {
-                    console.error("Polling error:", checkErr);
+                if (result.status === "paid") {
+                    clearInterval(interval);
+                    document.getElementById("pay-section").style.display = "none";
+                    resDiv.innerHTML += `
+                        <div class="premium-content">
+                            <h3 style="color:#27ae60; margin-top:0;">📋 Professional Legal Deep-Dive</h3>
+                            <div>${storedPaidContent.replace(/\n/g, '<br>')}</div>
+                        </div>`;
                 }
             }, 4000);
-            
-        } catch (err) {
-            statusDiv.innerHTML = `❌ Error: ${err.message || "Failed to initiate payment."}`;
-            statusDiv.style.color = "#dc2626";
-            payBtn.disabled = false;
-        }
+        } catch (e) { statusDiv.innerHTML = "❌ Payment Error."; }
     }
 </script>
 </body>
