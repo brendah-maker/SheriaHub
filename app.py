@@ -34,9 +34,15 @@ with app.app_context():
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")
-# Changing the default from "True" to "False"
-IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
 
+# BASE_URL logic
+IS_SANDBOX = os.getenv("IS_SANDBOX", "True").lower() == "true"
+
+if IS_SANDBOX:
+    BASE_URL = "https://sandbox.intasend.com/api/v1"
+else:
+    BASE_URL = "https://api.intasend.com/api/v1"  # LIVE URL
+    
 # IntaSend API Endpoints
 BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
