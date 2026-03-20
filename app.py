@@ -66,7 +66,7 @@ def stk_push():
         # IntaSend requires an email and amount
         payload = {
             "public_key": INTASEND_PUBLISHABLE_KEY,
-            "amount": data.get("amount", 10), # Default 10 KES for testing
+            "amount": data.get("amount", 1), # Default 10 KES for testing
             "phone_number": phone,
             "email": data.get("email", "user@sheriahub.co.ke"),
             "api_ref": "SheriaHub-Consultation",
