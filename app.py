@@ -1,7 +1,6 @@
 import os
 import json
 import requests
-import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from groq import Groq
@@ -33,30 +32,24 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
-# --- 2. API KEYS & CONFIGURATION ---
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
-INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")
-IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
+# --- 2. CLEANED API KEYS ---
+# .strip() removes any accidental spaces or hidden 'new line' characters from Render
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY", "").strip()
+INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY", "").strip()
 
-# This logic picks the right URL based on your IS_SANDBOX variable
+IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
 BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-@app.route('/')
 @app.route('/health')
 def health():
-    return jsonify({
-        "status": "Healthy", 
-        "mode": "SANDBOX" if IS_SANDBOX else "LIVE",
-        "url_used": BASE_URL
-    }), 200
+    return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
 
 # --- 3. AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    if not client: return jsonify({"error": "AI not initialized"}), 500
     try:
         data = request.get_json()
         question = data.get("question", "")
@@ -68,16 +61,6 @@ def ask_ai():
 
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
-            if not payment:
-                try:
-                    headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
-                    res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
-                    if res.json().get("invoice", {}).get("state") == "COMPLETE":
-                        payment = Payment(id=checkout_id, status="paid", credits=2)
-                        db.session.add(payment)
-                        db.session.commit()
-                except: pass
-
             if payment and payment.status == "paid" and payment.credits > 0:
                 is_paid = True
                 payment.credits -= 1
@@ -86,54 +69,45 @@ def ask_ai():
 
         law_map = {
             "employment": "Employment Act 2007",
-            "land": "Land Act 2012 & Land Registration Act",
-            "family": "Children Act 2022, Marriage Act, and Succession Act",
+            "land": "Land Act 2012",
+            "family": "Marriage Act",
             "traffic": "Traffic Act Cap 403",
             "tenant": "Rent Restriction Act",
-            "civil_criminal": "The Penal Code of Kenya and Civil Procedure"
+            "civil_criminal": "Penal Code of Kenya"
         }
-        law = law_map.get(category, "Kenyan Law")
-            
+        
         prompt = (
-            f"You are a Kenyan legal expert specializing in {law}. "
-            f"User Question: {question}\n\n"
-            "Format your response EXACTLY like this:\n"
-            "SUMMARY: [One short sentence explaining the law]\n"
-            "DEEP_DIVE: [Detailed markdown analysis with sections and citations]"
+            f"Expert in {law_map.get(category)}. User: {question}\n\n"
+            "Format: SUMMARY: [1 sentence] DEEP_DIVE: [markdown]"
         )
 
-        completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant", 
-            messages=[{"role": "user", "content": prompt}]
+        chat = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.1-8b-instant",
         )
         
-        full_text = completion.choices[0].message.content
-        if "DEEP_DIVE:" in full_text:
-            parts = full_text.split("DEEP_DIVE:")
-            summary = parts[0].replace("SUMMARY:", "").replace("**", "").strip()
-            deep_dive = parts[1].strip()
-        else:
-            summary = full_text.split('.')[0] + "."
-            deep_dive = full_text
+        txt = chat.choices[0].message.content
+        summary = txt.split("DEEP_DIVE:")[0].replace("SUMMARY:", "").strip() if "DEEP_DIVE:" in txt else txt[:100]
+        deep_dive = txt.split("DEEP_DIVE:")[1].strip() if "DEEP_DIVE:" in txt else txt
 
         return jsonify({
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
             "summary": summary,
-            "content": deep_dive if is_paid else "Payment required to unlock deep dive."
+            "content": deep_dive if is_paid else "Payment required."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- 4. M-PESA STK PUSH (DEBUG VERSION) ---
+# --- 4. FIXED M-PESA STK PUSH ---
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
         data = request.get_json()
         phone = data.get("phone", "").strip().replace("+", "")
         if phone.startswith("0"): phone = "254" + phone[1:]
-        elif (phone.startswith("7") or phone.startswith("1")) and len(phone) == 9: phone = "254" + phone
         
+        # We use the stripped key here to ensure no 'Invalid api token' error
         payload = {
             "public_key": INTASEND_PUBLISHABLE_KEY, 
             "amount": 20, 
@@ -145,10 +119,7 @@ def stk_push():
             "Content-Type": "application/json"
         }
         
-        # LOGS: Reveal the error
-        print(f"DEBUG: Attempting STK Push. Mode: {'SANDBOX' if IS_SANDBOX else 'LIVE'}")
-        print(f"DEBUG: Using Publishable Key starting with: {str(INTASEND_PUBLISHABLE_KEY)[:15]}")
-        
+        print(f"DEBUG: Push to {phone} on {BASE_URL}")
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
         res_data = res.json()
         
@@ -156,14 +127,13 @@ def stk_push():
             print(f"❌ INTASEND REJECTED: {res_data}")
             return jsonify({"error": "M-Pesa rejected", "details": res_data}), 400
 
-        invoice_id = res_data.get("invoice", {}).get("invoice_id")
-        if invoice_id:
-            db.session.add(Payment(id=invoice_id, status="pending", credits=0))
+        inv_id = res_data.get("invoice", {}).get("invoice_id")
+        if inv_id:
+            db.session.add(Payment(id=inv_id, status="pending", credits=0))
             db.session.commit()
-            return jsonify({"checkout_id": invoice_id})
-        return jsonify({"error": "No Invoice ID"}), 400
+            return jsonify({"checkout_id": inv_id})
+        return jsonify({"error": "No ID"}), 400
     except Exception as e:
-        print(f"🔥 STK Crash: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/callback', methods=['POST'])
@@ -180,7 +150,7 @@ def callback():
     return jsonify({"ok": True}), 200
 
 @app.route('/check-payment/<id>')
-def check_payment(id):
+def check(id):
     p = Payment.query.get(id)
     if p and p.status == "paid": return jsonify({"status": "paid", "credits": p.credits})
     try:
@@ -198,5 +168,4 @@ def check_payment(id):
     return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
