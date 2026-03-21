@@ -60,9 +60,9 @@
     let lastQ = "";
     let poller = null;
 
-    // Helper to remember payments
     const savePaidId = (id) => localStorage.setItem('sheria_payment_id', id);
     const getPaidId = () => localStorage.getItem('sheria_payment_id');
+    const clearPaidId = () => localStorage.removeItem('sheria_payment_id');
 
     function setCat(c) {
         cat = c;
@@ -75,15 +75,13 @@
         const resDiv = document.getElementById("res");
         const btn = document.getElementById("askBtn");
         
-        // Use the passed ID or a saved one from a previous session
         const activeId = checkId || getPaidId();
-        
         const question = qInput.value || lastQ;
         if (!question) return;
         lastQ = question;
 
         btn.disabled = true;
-        resDiv.innerHTML = `<p style="text-align:center;">⚖️ Sheria AI is analyzing Kenyan law...</p>`;
+        resDiv.innerHTML = `<p style="text-align:center;">⚖️ Sheria AI is generating your deep-dive...</p>`;
 
         try {
             const response = await fetch(`${API}/ask-ai`, {
@@ -93,24 +91,36 @@
             });
             
             const data = await response.json();
+
             if (data.status === "premium") {
-                if (activeId) savePaidId(activeId); // Permanently remember this success
                 const formatted = data.content.replace(/\n/g, '<br>');
-                resDiv.innerHTML = `<div class="premium-content"><h3>📋 Full Deep-Dive Result</h3>${formatted}</div>`;
+                resDiv.innerHTML = `
+                    <div style="background:var(--gold); padding:5px 15px; border-radius:10px; font-weight:bold; display:inline-block; margin-bottom:10px;">
+                        🎟️ ${data.credits_left} deep-dives remaining
+                    </div>
+                    <div class="premium-content"><h3>📋 Full Deep-Dive Result</h3>${formatted}</div>`;
+                
+                // If out of credits, clear the saved ID so the next question triggers the paywall
+                if (data.credits_left === 0) {
+                    clearPaidId();
+                } else if (activeId) {
+                    savePaidId(activeId);
+                }
+
                 resDiv.scrollIntoView({ behavior: 'smooth' });
             } else {
                 resDiv.innerHTML = `
                     <div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div>
                     <div class="paywall">
                         <h4>🔒 Unlock Detailed Legal Sections</h4>
-                        <p>One-time payment of <strong>KSh 20</strong></p>
+                        <p>Get <strong>2 Full Legal Analysis</strong> credits for <strong>KSh 20</strong></p>
                         <input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; max-width:280px; margin-bottom:12px; border-radius:8px; border:1px solid #ccc;"><br>
                         <button class="ask-btn" style="background:var(--gold);color:black;max-width:280px;" id="payBtn" onclick="pay()">Pay via M-Pesa</button>
                         <div id="pStat" style="margin-top:12px; font-weight:600;"></div>
                     </div>`;
             }
         } catch (e) {
-            resDiv.innerHTML = "<p style='color:red;text-align:center;'>Connection busy. Please click 'Get AI Consultation' again.</p>";
+            resDiv.innerHTML = "<p style='color:red;text-align:center;'>Connection busy. Try clicking 'Get AI Consultation' again.</p>";
         } finally { btn.disabled = false; }
     }
 
@@ -119,10 +129,10 @@
         const pStat = document.getElementById("pStat");
         const payBtn = document.getElementById("payBtn");
 
-        if(!pInput) return alert("Please enter your M-Pesa number");
+        if(!pInput) return alert("Please enter M-Pesa number");
         if (poller) clearInterval(poller);
 
-        pStat.innerText = "⏳ Requesting M-Pesa push...";
+        pStat.innerText = "⏳ Initializing STK Push...";
         payBtn.disabled = true;
 
         try {
@@ -134,12 +144,12 @@
             const data = await res.json();
             
             if (!data.checkout_id) {
-                pStat.innerText = "❌ Request Failed. Try again.";
+                pStat.innerText = "❌ Request Failed.";
                 payBtn.disabled = false;
                 return;
             }
 
-            pStat.innerText = "📩 Prompt sent! Enter your PIN on your phone...";
+            pStat.innerText = "📩 Prompt sent! Enter PIN on your phone...";
 
             poller = setInterval(async () => {
                 try {
@@ -147,7 +157,7 @@
                     const r = await check.json();
                     if (r.status === "paid") {
                         clearInterval(poller);
-                        pStat.innerText = "✅ Paid! Unlocking...";
+                        pStat.innerText = "✅ Paid!";
                         savePaidId(data.checkout_id);
                         askAi(data.checkout_id);
                     }
@@ -160,6 +170,5 @@
         }
     }
 </script>
-
 </body>
 </html>
