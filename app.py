@@ -139,16 +139,25 @@ def stk_push():
         payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
         
+        # LOGGING: See what we are sending
+        print(f"DEBUG: Sending to {BASE_URL} with key {INTASEND_PUBLISHABLE_KEY[:15]}...")
+        
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
         res_data = res.json()
         
-        inv_id = res_data.get("invoice", {}).get("invoice_id")
-        if inv_id:
-            db.session.add(Payment(id=inv_id, status="pending", credits=0))
+        if res.status_code != 200:
+            # THIS LINE WILL SHOW THE REAL REASON IN RENDER LOGS
+            print(f"❌ INTASEND REJECTED: {res_data}")
+            return jsonify({"error": "M-Pesa rejected", "details": res_data}), 400
+
+        invoice_id = res_data.get("invoice", {}).get("invoice_id")
+        if invoice_id:
+            db.session.add(Payment(id=invoice_id, status="pending", credits=0))
             db.session.commit()
-            return jsonify({"checkout_id": inv_id})
-        return jsonify({"error": "M-Pesa rejected"}), 400
+            return jsonify({"checkout_id": invoice_id})
+        return jsonify({"error": "No Invoice ID"}), 400
     except Exception as e:
+        print(f"🔥 STK PUSH CRASH: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/callback', methods=['POST'])
