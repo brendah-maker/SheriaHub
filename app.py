@@ -1,15 +1,16 @@
 import os
 import json
 import requests
-import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from groq import Groq
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
+# Allow all origins for testing/Vercel
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+# --- Database ---
 uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
 if uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -22,9 +23,11 @@ class Payment(db.Model):
     id = db.Column(db.String(100), primary_key=True)
     status = db.Column(db.String(20), default="pending")
 
+# --- Initialize Database ---
 with app.app_context():
     db.create_all()
 
+# --- Configuration ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
@@ -33,9 +36,10 @@ BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
+@app.route('/')
 @app.route('/health')
 def health():
-    return jsonify({"status": "Online"}), 200
+    return jsonify({"status": "healthy", "mode": "LIVE" if not IS_SANDBOX else "SANDBOX"}), 200
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
@@ -45,22 +49,24 @@ def ask_ai():
         category = data.get("category", "tenant")
         checkout_id = data.get("checkout_id")
 
-        # --- PREVENT DOUBLE PAYMENT CHECK ---
+        # --- Check if user has already paid ---
         is_paid = False
         if checkout_id and checkout_id != "undefined":
-            # 1. Check local DB
-            p = Payment.query.get(checkout_id)
-            if p and p.status == "paid":
+            # Check local DB
+            payment_record = Payment.query.get(checkout_id)
+            if payment_record and payment_record.status == "paid":
                 is_paid = True
             else:
-                # 2. Re-verify with IntaSend API just in case
+                # Re-verify with IntaSend API (backup sync)
                 try:
                     headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
                     res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
                     if res.json().get("invoice", {}).get("state") == "COMPLETE":
                         is_paid = True
-                        if not p: db.session.add(Payment(id=checkout_id, status="paid"))
-                        else: p.status = "paid"
+                        if not payment_record:
+                            db.session.add(Payment(id=checkout_id, status="paid"))
+                        else:
+                            payment_record.status = "paid"
                         db.session.commit()
                 except: pass
 
@@ -72,13 +78,13 @@ def ask_ai():
             "tenant": "Rent Restriction Act"
         }
         
-        # We removed "response_format=json" to prevent the 400 Error in your logs
+        # Simpler prompt to avoid AI generation errors
         prompt = (
-            f"You are a Kenyan legal expert on {law_map.get(category)}. "
-            f"User Question: {question}\n\n"
-            "Provide your response in this EXACT format:\n"
-            "SUMMARY: [One short sentence]\n"
-            "DEEP_DIVE: [Detailed markdown with sections and citations]"
+            f"You are a Kenyan legal expert on {law_map.get(category, 'Kenyan Law')}. "
+            f"Question: {question}\n\n"
+            "Respond exactly in this format:\n"
+            "SUMMARY: [One sentence overview]\n"
+            "DEEP_DIVE: [Detailed legal analysis with markdown]"
         )
 
         chat_completion = client.chat.completions.create(
@@ -86,46 +92,46 @@ def ask_ai():
             model="llama-3.1-8b-instant",
         )
         
-        response_text = chat_completion.choices[0].message.content
+        full_text = chat_completion.choices[0].message.content
         
-        # Simple parsing logic
-        summary = "Summary unavailable"
-        deep_dive = "Details unavailable"
-        
-        if "SUMMARY:" in response_text and "DEEP_DIVE:" in response_text:
-            parts = response_text.split("DEEP_DIVE:")
+        # Smart splitting of AI response
+        if "DEEP_DIVE:" in full_text:
+            parts = full_text.split("DEEP_DIVE:")
             summary = parts[0].replace("SUMMARY:", "").strip()
             deep_dive = parts[1].strip()
         else:
-            summary = response_text[:100] + "..."
-            deep_dive = response_text
+            summary = full_text[:150] + "..."
+            deep_dive = full_text
 
         return jsonify({
             "status": "premium" if is_paid else "free",
             "summary": summary,
-            "content": deep_dive if is_paid else "Payment required to unlock deep dive."
+            "content": deep_dive if is_paid else "🔒 Payment required to unlock full analysis."
         })
 
     except Exception as e:
-        print(f"🔥 ERROR: {e}")
         return jsonify({"error": str(e)}), 500
 
-# Payment routes remain the same, adding the callback fix
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
-    data = request.get_json()
-    phone = data.get("phone", "").strip().replace("+", "")
-    if phone.startswith("0"): phone = "254" + phone[1:]
-    payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
-    headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
-    res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
-    res_data = res.json()
-    inv_id = res_data.get("invoice", {}).get("invoice_id")
-    if inv_id:
-        db.session.add(Payment(id=inv_id, status="pending"))
-        db.session.commit()
-        return jsonify({"checkout_id": inv_id})
-    return jsonify({"error": "Failed"}), 400
+    try:
+        data = request.get_json()
+        phone = data.get("phone", "").strip().replace("+", "")
+        if phone.startswith("0"): phone = "254" + phone[1:]
+        
+        payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
+        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
+        res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
+        res_data = res.json()
+        
+        inv_id = res_data.get("invoice", {}).get("invoice_id")
+        if inv_id:
+            db.session.add(Payment(id=inv_id, status="pending"))
+            db.session.commit()
+            return jsonify({"checkout_id": inv_id})
+        return jsonify({"error": "M-Pesa rejected"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/callback', methods=['POST'])
 def callback():
@@ -154,4 +160,5 @@ def check(id):
     return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
