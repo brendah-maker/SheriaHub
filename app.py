@@ -38,6 +38,8 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")
 IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
+
+# This logic picks the right URL based on your IS_SANDBOX variable
 BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
@@ -45,9 +47,13 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 @app.route('/')
 @app.route('/health')
 def health():
-    return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
+    return jsonify({
+        "status": "Healthy", 
+        "mode": "SANDBOX" if IS_SANDBOX else "LIVE",
+        "url_used": BASE_URL
+    }), 200
 
-# --- 3. ROBUST AI LOGIC ---
+# --- 3. AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client: return jsonify({"error": "AI not initialized"}), 500
@@ -78,14 +84,13 @@ def ask_ai():
                 credits_left = payment.credits
                 db.session.commit()
 
-        # UPDATED LAW MAP WITH CIVIL/CRIMINAL
         law_map = {
             "employment": "Employment Act 2007",
             "land": "Land Act 2012 & Land Registration Act",
             "family": "Children Act 2022, Marriage Act, and Succession Act",
             "traffic": "Traffic Act Cap 403",
             "tenant": "Rent Restriction Act",
-            "civil_criminal": "The Penal Code of Kenya, Civil Procedure Act, and Small Claims Court Act"
+            "civil_criminal": "The Penal Code of Kenya and Civil Procedure"
         }
         law = law_map.get(category, "Kenyan Law")
             
@@ -93,8 +98,8 @@ def ask_ai():
             f"You are a Kenyan legal expert specializing in {law}. "
             f"User Question: {question}\n\n"
             "Format your response EXACTLY like this:\n"
-            "SUMMARY: [One short sentence explaining the legal position]\n"
-            "DEEP_DIVE: [Detailed markdown analysis with sections and specific citations]"
+            "SUMMARY: [One short sentence explaining the law]\n"
+            "DEEP_DIVE: [Detailed markdown analysis with sections and citations]"
         )
 
         completion = client.chat.completions.create(
@@ -103,9 +108,6 @@ def ask_ai():
         )
         
         full_text = completion.choices[0].message.content
-        summary = ""
-        deep_dive = ""
-        
         if "DEEP_DIVE:" in full_text:
             parts = full_text.split("DEEP_DIVE:")
             summary = parts[0].replace("SUMMARY:", "").replace("**", "").strip()
@@ -114,9 +116,6 @@ def ask_ai():
             summary = full_text.split('.')[0] + "."
             deep_dive = full_text
 
-        if len(summary) < 5:
-            summary = "Analysis complete. Unlock the deep-dive for the full legal breakdown."
-
         return jsonify({
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
@@ -124,10 +123,9 @@ def ask_ai():
             "content": deep_dive if is_paid else "Payment required to unlock deep dive."
         })
     except Exception as e:
-        print(f"AI Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-# --- 4. PAYMENT ROUTES ---
+# --- 4. M-PESA STK PUSH (DEBUG VERSION) ---
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
@@ -136,17 +134,25 @@ def stk_push():
         if phone.startswith("0"): phone = "254" + phone[1:]
         elif (phone.startswith("7") or phone.startswith("1")) and len(phone) == 9: phone = "254" + phone
         
-        payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
-        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
+        payload = {
+            "public_key": INTASEND_PUBLISHABLE_KEY, 
+            "amount": 20, 
+            "phone_number": phone, 
+            "api_ref": "SheriaHub"
+        }
+        headers = {
+            "Authorization": f"Bearer {INTASEND_SECRET_KEY}", 
+            "Content-Type": "application/json"
+        }
         
-        # LOGGING: See what we are sending
-        print(f"DEBUG: Sending to {BASE_URL} with key {INTASEND_PUBLISHABLE_KEY[:15]}...")
+        # LOGS: Reveal the error
+        print(f"DEBUG: Attempting STK Push. Mode: {'SANDBOX' if IS_SANDBOX else 'LIVE'}")
+        print(f"DEBUG: Using Publishable Key starting with: {str(INTASEND_PUBLISHABLE_KEY)[:15]}")
         
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
         res_data = res.json()
         
         if res.status_code != 200:
-            # THIS LINE WILL SHOW THE REAL REASON IN RENDER LOGS
             print(f"❌ INTASEND REJECTED: {res_data}")
             return jsonify({"error": "M-Pesa rejected", "details": res_data}), 400
 
@@ -157,7 +163,7 @@ def stk_push():
             return jsonify({"checkout_id": invoice_id})
         return jsonify({"error": "No Invoice ID"}), 400
     except Exception as e:
-        print(f"🔥 STK PUSH CRASH: {e}")
+        print(f"🔥 STK Crash: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/callback', methods=['POST'])
