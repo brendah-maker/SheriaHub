@@ -9,12 +9,9 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 
 app = Flask(__name__)
-
-# --- 1. CORS CONFIGURATION ---
-# Optimized for production and testing environments
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- 2. DATABASE CONFIGURATION ---
+# --- 1. DATABASE CONFIGURATION ---
 uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
 if uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -24,26 +21,22 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 class Payment(db.Model):
-    id = db.Column(db.String(100), primary_key=True)  # invoice_id
+    id = db.Column(db.String(100), primary_key=True)
     status = db.Column(db.String(20), default="pending")
     credits = db.Column(db.Integer, default=0)
 
-# --- DATABASE AUTO-MIGRATION ---
 with app.app_context():
     db.create_all()
-    # Safely add credits column if it's missing from an existing database
     try:
         db.session.execute(text("ALTER TABLE payment ADD COLUMN credits INTEGER DEFAULT 0"))
         db.session.commit()
     except Exception:
         db.session.rollback()
 
-# --- 3. API KEYS & CONFIGURATION ---
+# --- 2. API KEYS & CONFIGURATION ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")
-
-# Environment Check (Sandbox vs Live)
 IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
 BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
@@ -52,15 +45,12 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 @app.route('/')
 @app.route('/health')
 def health():
-    mode = "SANDBOX" if IS_SANDBOX else "LIVE"
-    return jsonify({"status": "Healthy", "mode": mode, "region": "Kenya"}), 200
+    return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
 
-# --- 4. ROBUST AI LOGIC ---
+# --- 3. ROBUST AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    if not client:
-        return jsonify({"error": "AI client not initialized"}), 500
-    
+    if not client: return jsonify({"error": "AI not initialized"}), 500
     try:
         data = request.get_json()
         question = data.get("question", "")
@@ -70,11 +60,8 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
-        # Check Payment & Consume Credit
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
-            
-            # Sync with IntaSend if record is missing (Auto-repair)
             if not payment:
                 try:
                     headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
@@ -91,13 +78,14 @@ def ask_ai():
                 credits_left = payment.credits
                 db.session.commit()
 
-        # Select Law Context
+        # UPDATED LAW MAP WITH CIVIL/CRIMINAL
         law_map = {
             "employment": "Employment Act 2007",
             "land": "Land Act 2012 & Land Registration Act",
             "family": "Children Act 2022, Marriage Act, and Succession Act",
             "traffic": "Traffic Act Cap 403",
-            "tenant": "Rent Restriction Act"
+            "tenant": "Rent Restriction Act",
+            "civil_criminal": "The Penal Code of Kenya, Civil Procedure Act, and Small Claims Court Act"
         }
         law = law_map.get(category, "Kenyan Law")
             
@@ -109,7 +97,6 @@ def ask_ai():
             "DEEP_DIVE: [Detailed markdown analysis with sections and specific citations]"
         )
 
-        # Using fast 8b model to prevent Render timeouts
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
             messages=[{"role": "user", "content": prompt}]
@@ -119,7 +106,6 @@ def ask_ai():
         summary = ""
         deep_dive = ""
         
-        # Robust Parsing
         if "DEEP_DIVE:" in full_text:
             parts = full_text.split("DEEP_DIVE:")
             summary = parts[0].replace("SUMMARY:", "").replace("**", "").strip()
@@ -141,7 +127,7 @@ def ask_ai():
         print(f"AI Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-# --- 5. PAYMENT ROUTES ---
+# --- 4. PAYMENT ROUTES ---
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
@@ -161,7 +147,7 @@ def stk_push():
             db.session.add(Payment(id=inv_id, status="pending", credits=0))
             db.session.commit()
             return jsonify({"checkout_id": inv_id})
-        return jsonify({"error": "Payment rejected"}), 400
+        return jsonify({"error": "M-Pesa rejected"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -181,9 +167,7 @@ def callback():
 @app.route('/check-payment/<id>')
 def check_payment(id):
     p = Payment.query.get(id)
-    if p and p.status == "paid": 
-        return jsonify({"status": "paid", "credits": p.credits})
-    
+    if p and p.status == "paid": return jsonify({"status": "paid", "credits": p.credits})
     try:
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
         res = requests.get(f"{BASE_URL}/payment/status/{id}/", headers=headers)
