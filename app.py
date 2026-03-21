@@ -6,9 +6,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from groq import Groq
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 
 app = Flask(__name__)
-# Open CORS for testing and production
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # --- 1. DATABASE CONFIGURATION ---
@@ -25,8 +25,18 @@ class Payment(db.Model):
     status = db.Column(db.String(20), default="pending")
     credits = db.Column(db.Integer, default=0)
 
+# --- DATABASE AUTO-REPAIR (MIGRATION) ---
 with app.app_context():
     db.create_all()
+    # This block checks if 'credits' column exists and adds it if missing
+    try:
+        db.session.execute(text("ALTER TABLE payment ADD COLUMN credits INTEGER DEFAULT 0"))
+        db.session.commit()
+        print("✅ Database Migrated: Added 'credits' column.")
+    except Exception as e:
+        # If it already exists, it will fail silently, which is fine
+        db.session.rollback()
+        print("ℹ️ Database check: 'credits' column already exists or skipped.")
 
 # --- 2. API KEYS & URLS ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -59,7 +69,7 @@ def ask_ai():
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             
-            # Auto-repair DB if record is missing but payment is COMPLETE on IntaSend
+            # Sync with IntaSend if record is missing in DB
             if not payment:
                 try:
                     headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
