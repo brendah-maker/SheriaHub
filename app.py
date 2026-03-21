@@ -118,4 +118,67 @@ def ask_ai():
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
             "summary": summary,
-            "content": deep_dive if is_paid else "Payment r
+            "content": deep_dive if is_paid else "Payment required to unlock deep dive."
+        })
+    except Exception as e:
+        print(f"ERROR: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# --- 4. PAYMENT ROUTES ---
+@app.route('/stkpush', methods=['POST'])
+def stk_push():
+    try:
+        data = request.get_json()
+        phone = data.get("phone", "").strip().replace("+", "")
+        if phone.startswith("0"): phone = "254" + phone[1:]
+        elif (phone.startswith("7") or phone.startswith("1")) and len(phone) == 9: phone = "254" + phone
+        
+        payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
+        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
+        
+        res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
+        res_data = res.json()
+        
+        inv_id = res_data.get("invoice", {}).get("invoice_id")
+        if inv_id:
+            db.session.add(Payment(id=inv_id, status="pending", credits=0))
+            db.session.commit()
+            return jsonify({"checkout_id": inv_id})
+        return jsonify({"error": "M-Pesa rejected"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/callback', methods=['POST'])
+def callback():
+    data = request.get_json()
+    inv_id = data.get("invoice_id")
+    if inv_id and data.get("state") == "COMPLETE":
+        p = Payment.query.get(inv_id)
+        if not p: db.session.add(Payment(id=inv_id, status="paid", credits=2))
+        else:
+            p.status = "paid"
+            p.credits = 2
+        db.session.commit()
+    return jsonify({"ok": True}), 200
+
+@app.route('/check-payment/<id>')
+def check(id):
+    p = Payment.query.get(id)
+    if p and p.status == "paid": return jsonify({"status": "paid", "credits": p.credits})
+    try:
+        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
+        res = requests.get(f"{BASE_URL}/payment/status/{id}/", headers=headers)
+        if res.json().get("invoice", {}).get("state") == "COMPLETE":
+            if not p: p = Payment(id=id, status="paid", credits=2)
+            else:
+                p.status = "paid"
+                p.credits = 2
+            db.session.add(p)
+            db.session.commit()
+            return jsonify({"status": "paid", "credits": 2})
+    except: pass
+    return jsonify({"status": "pending"})
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
