@@ -1,25 +1,20 @@
 import os
 import json
 import requests
+import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from groq import Groq
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 
 app = Flask(__name__)
 
 # --- 1. CORS CONFIGURATION ---
-# Allows your website to talk to this backend
-CORS(app, resources={r"/*": {
-    "origins": [
-        "https://www.sheriahub.co.ke", 
-        "https://sheriahub.co.ke",
-        "https://sheria-hub.vercel.app" # Your vercel domain
-    ]
-}})
+# Optimized for production and testing environments
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # --- 2. DATABASE CONFIGURATION ---
-# On Render, use a PostgreSQL database for live payments to persist!
 uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
 if uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -31,27 +26,36 @@ db = SQLAlchemy(app)
 class Payment(db.Model):
     id = db.Column(db.String(100), primary_key=True)  # invoice_id
     status = db.Column(db.String(20), default="pending")
+    credits = db.Column(db.Integer, default=0)
 
+# --- DATABASE AUTO-MIGRATION ---
 with app.app_context():
     db.create_all()
+    # Safely add credits column if it's missing from an existing database
+    try:
+        db.session.execute(text("ALTER TABLE payment ADD COLUMN credits INTEGER DEFAULT 0"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
-# --- 3. API KEYS & URLS ---
+# --- 3. API KEYS & CONFIGURATION ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")
 
-# Check if we are in Sandbox or Live
+# Environment Check (Sandbox vs Live)
 IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
 BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 @app.route('/')
+@app.route('/health')
 def health():
     mode = "SANDBOX" if IS_SANDBOX else "LIVE"
-    return jsonify({"status": "active", "mode": mode, "region": "Kenya"}), 200
+    return jsonify({"status": "Healthy", "mode": mode, "region": "Kenya"}), 200
 
-# --- 4. AI CONSULTATION LOGIC ---
+# --- 4. ROBUST AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client:
@@ -63,117 +67,136 @@ def ask_ai():
         category = data.get("category", "tenant")
         checkout_id = data.get("checkout_id")
 
-        # Check Payment Status
         is_paid = False
-        if checkout_id:
+        credits_left = 0
+
+        # Check Payment & Consume Credit
+        if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
-            if payment and payment.status == "paid":
-                is_paid = True
-
-        legal_context = "Expert in Kenyan Employment Law" if category == "employment" else "Expert in Kenyan Tenancy Law"
             
-        system_prompt = (
-            f"You are a {legal_context}. Return ONLY a JSON object. "
-            "Structure: {\"free_summary\": \"one sentence\", \"paid_deep_dive\": \"comprehensive markdown\"}"
+            # Sync with IntaSend if record is missing (Auto-repair)
+            if not payment:
+                try:
+                    headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
+                    res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
+                    if res.json().get("invoice", {}).get("state") == "COMPLETE":
+                        payment = Payment(id=checkout_id, status="paid", credits=2)
+                        db.session.add(payment)
+                        db.session.commit()
+                except: pass
+
+            if payment and payment.status == "paid" and payment.credits > 0:
+                is_paid = True
+                payment.credits -= 1
+                credits_left = payment.credits
+                db.session.commit()
+
+        # Select Law Context
+        law_map = {
+            "employment": "Employment Act 2007",
+            "land": "Land Act 2012 & Land Registration Act",
+            "family": "Children Act 2022, Marriage Act, and Succession Act",
+            "traffic": "Traffic Act Cap 403",
+            "tenant": "Rent Restriction Act"
+        }
+        law = law_map.get(category, "Kenyan Law")
+            
+        prompt = (
+            f"You are a Kenyan legal expert specializing in {law}. "
+            f"User Question: {question}\n\n"
+            "Format your response EXACTLY like this:\n"
+            "SUMMARY: [One short sentence explaining the legal position]\n"
+            "DEEP_DIVE: [Detailed markdown analysis with sections and specific citations]"
         )
 
+        # Using fast 8b model to prevent Render timeouts
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile", 
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": question}
-            ],
-            response_format={"type": "json_object"}
+            model="llama-3.1-8b-instant", 
+            messages=[{"role": "user", "content": prompt}]
         )
         
-        ai_raw = json.loads(completion.choices[0].message.content)
+        full_text = completion.choices[0].message.content
+        summary = ""
+        deep_dive = ""
         
+        # Robust Parsing
+        if "DEEP_DIVE:" in full_text:
+            parts = full_text.split("DEEP_DIVE:")
+            summary = parts[0].replace("SUMMARY:", "").replace("**", "").strip()
+            deep_dive = parts[1].strip()
+        else:
+            summary = full_text.split('.')[0] + "."
+            deep_dive = full_text
+
+        if len(summary) < 5:
+            summary = "Analysis complete. Unlock the deep-dive for the full legal breakdown."
+
         return jsonify({
             "status": "premium" if is_paid else "free",
-            "summary": ai_raw.get("free_summary", "Summary unavailable."),
-            "content": ai_raw.get("paid_deep_dive") if is_paid else "Payment required to unlock deep dive."
+            "credits_left": credits_left,
+            "summary": summary,
+            "content": deep_dive if is_paid else "Payment required to unlock deep dive."
         })
-        
     except Exception as e:
         print(f"AI Error: {e}")
-        return jsonify({"error": "AI Processing error"}), 500
+        return jsonify({"error": str(e)}), 500
 
-# --- 5. LIVE M-PESA STK PUSH ---
+# --- 5. PAYMENT ROUTES ---
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
         data = request.get_json()
         phone = data.get("phone", "").strip().replace("+", "")
+        if phone.startswith("0"): phone = "254" + phone[1:]
+        elif (phone.startswith("7") or phone.startswith("1")) and len(phone) == 9: phone = "254" + phone
         
-        # Clean phone number for Kenyan Standards (e.g., 2547...)
-        if phone.startswith("0"): 
-            phone = "254" + phone[1:]
-        elif (phone.startswith("7") or phone.startswith("1")) and len(phone) == 9:
-            phone = "254" + phone
+        payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
+        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
         
-        payload = {
-            "public_key": INTASEND_PUBLISHABLE_KEY,
-            "amount": 20, 
-            "phone_number": phone,
-            "api_ref": "SheriaHub-Premium",
-        }
-
-        headers = {
-            "Authorization": f"Bearer {INTASEND_SECRET_KEY}",
-            "Content-Type": "application/json"
-        }
-
-        print(f"--- Sending LIVE STK Push to {phone} ---")
-        response = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
-        res_data = response.json()
+        res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
+        res_data = res.json()
         
-        if response.status_code != 200:
-            print(f"❌ IntaSend Error: {res_data}")
-            return jsonify({"error": "Payment initialization failed", "details": res_data}), 400
-
-        invoice_id = res_data.get("invoice", {}).get("invoice_id")
-        
-        if invoice_id:
-            new_payment = Payment(id=invoice_id, status="pending")
-            db.session.add(new_payment)
+        inv_id = res_data.get("invoice", {}).get("invoice_id")
+        if inv_id:
+            db.session.add(Payment(id=inv_id, status="pending", credits=0))
             db.session.commit()
-            return jsonify({"checkout_id": invoice_id})
-        
-        return jsonify({"error": "Invalid response from payment gateway"}), 400
-        
+            return jsonify({"checkout_id": inv_id})
+        return jsonify({"error": "Payment rejected"}), 400
     except Exception as e:
-        print(f"🔥 STK Push Crash: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": str(e)}), 500
 
-# --- 6. PAYMENT STATUS CHECKER ---
-@app.route('/check-payment/<checkout_id>')
-def check_payment(checkout_id):
-    if not checkout_id or checkout_id == "undefined":
-        return jsonify({"status": "error", "message": "Invalid ID"}), 400
+@app.route('/api/callback', methods=['POST'])
+def callback():
+    data = request.get_json()
+    inv_id = data.get("invoice_id")
+    if inv_id and data.get("state") == "COMPLETE":
+        p = Payment.query.get(inv_id)
+        if not p: db.session.add(Payment(id=inv_id, status="paid", credits=2))
+        else:
+            p.status = "paid"
+            p.credits = 2
+        db.session.commit()
+    return jsonify({"ok": True}), 200
 
-    payment = Payment.query.get(checkout_id)
-    if payment and payment.status == "paid":
-        return jsonify({"status": "paid"})
+@app.route('/check-payment/<id>')
+def check_payment(id):
+    p = Payment.query.get(id)
+    if p and p.status == "paid": 
+        return jsonify({"status": "paid", "credits": p.credits})
     
-    # Live Status Check with IntaSend API
     try:
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
-        res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
-        data = res.json()
-        state = data.get("invoice", {}).get("state")
-
-        if state == "COMPLETE":
-            if not payment:
-                payment = Payment(id=checkout_id, status="paid")
-                db.session.add(payment)
+        res = requests.get(f"{BASE_URL}/payment/status/{id}/", headers=headers)
+        if res.json().get("invoice", {}).get("state") == "COMPLETE":
+            if not p: p = Payment(id=id, status="paid", credits=2)
             else:
-                payment.status = "paid"
+                p.status = "paid"
+                p.credits = 2
+            db.session.add(p)
             db.session.commit()
-            return jsonify({"status": "paid"})
-    except Exception as e:
-        print(f"Status check failed: {e}")
-        
-    return jsonify({"status": payment.status if payment else "pending"})
+            return jsonify({"status": "paid", "credits": 2})
+    except: pass
+    return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
