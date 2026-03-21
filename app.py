@@ -8,13 +8,10 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-# --- 1. CORS CONFIGURATION ---
+# --- 1. UPDATED CORS CONFIGURATION ---
+# "origins": "*" allows your Vercel testing links to talk to Render without errors.
 CORS(app, resources={r"/*": {
-    "origins": [
-        "https://www.sheriahub.co.ke", 
-        "https://sheriahub.co.ke",
-        "https://sheria-hub.vercel.app"
-    ]
+    "origins": "*" 
 }})
 
 # --- 2. DATABASE CONFIGURATION ---
@@ -37,6 +34,8 @@ with app.app_context():
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")
+
+# Check if we are in Sandbox or Live
 IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
 BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
@@ -50,6 +49,7 @@ def health():
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client:
+        print("❌ AI Error: Groq Client not initialized. Check GROQ_API_KEY.")
         return jsonify({"error": "AI client not initialized"}), 500
     
     try:
@@ -58,8 +58,11 @@ def ask_ai():
         category = data.get("category", "tenant")
         checkout_id = data.get("checkout_id")
 
+        print(f"--- Processing AI Request [Category: {category}] ---")
+
+        # Check Payment Status
         is_paid = False
-        if checkout_id:
+        if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if payment and payment.status == "paid":
                 is_paid = True
@@ -91,7 +94,8 @@ def ask_ai():
         )
         
         ai_raw = json.loads(completion.choices[0].message.content)
-        
+        print("✅ AI Analysis Complete")
+
         return jsonify({
             "status": "premium" if is_paid else "free",
             "summary": ai_raw.get("free_summary", "Summary unavailable."),
@@ -99,7 +103,8 @@ def ask_ai():
         })
         
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"🔥 AI Crash: {str(e)}")
+        return jsonify({"error": "An internal error occurred processing the AI request."}), 500
 
 # --- 5. LIVE M-PESA STK PUSH ---
 @app.route('/stkpush', methods=['POST'])
@@ -108,8 +113,11 @@ def stk_push():
         data = request.get_json()
         phone = data.get("phone", "").strip().replace("+", "")
         
-        if phone.startswith("0"): phone = "254" + phone[1:]
-        elif (phone.startswith("7") or phone.startswith("1")) and len(phone) == 9: phone = "254" + phone
+        # Clean phone number for Kenyan Standards
+        if phone.startswith("0"): 
+            phone = "254" + phone[1:]
+        elif (phone.startswith("7") or phone.startswith("1")) and len(phone) == 9:
+            phone = "254" + phone
         
         payload = {
             "public_key": INTASEND_PUBLISHABLE_KEY,
@@ -123,20 +131,25 @@ def stk_push():
             "Content-Type": "application/json"
         }
 
+        print(f"--- Sending M-Pesa STK Push to {phone} ---")
         response = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
         res_data = response.json()
         
         if response.status_code != 200:
-            return jsonify({"error": "STK Push failed", "details": res_data}), 400
+            print(f"❌ Payment Initialization Failed: {res_data}")
+            return jsonify({"error": "Payment failed", "details": res_data}), 400
 
         invoice_id = res_data.get("invoice", {}).get("invoice_id")
         if invoice_id:
-            db.session.add(Payment(id=invoice_id, status="pending"))
+            new_payment = Payment(id=invoice_id, status="pending")
+            db.session.add(new_payment)
             db.session.commit()
+            print(f"✅ Payment {invoice_id} recorded as Pending")
             return jsonify({"checkout_id": invoice_id})
         
-        return jsonify({"error": "Invoice ID missing"}), 400
+        return jsonify({"error": "No Invoice ID received from Gateway"}), 400
     except Exception as e:
+        print(f"🔥 STK Push Crash: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # --- 6. STATUS CHECKER ---
@@ -155,11 +168,16 @@ def check_payment(checkout_id):
         state = res.json().get("invoice", {}).get("state")
 
         if state == "COMPLETE":
-            if not payment: payment = Payment(id=checkout_id, status="paid")
-            else: payment.status = "paid"
+            if not payment:
+                payment = Payment(id=checkout_id, status="paid")
+                db.session.add(payment)
+            else:
+                payment.status = "paid"
             db.session.commit()
+            print(f"✅ Payment {checkout_id} confirmed as PAID")
             return jsonify({"status": "paid"})
-    except: pass
+    except Exception as e:
+        print(f"Status check error: {e}")
         
     return jsonify({"status": payment.status if payment else "pending"})
 
