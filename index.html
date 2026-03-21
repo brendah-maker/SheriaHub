@@ -58,20 +58,20 @@
     const API = "https://sheriahub.onrender.com"; 
     let cat = "tenant";
     let lastQ = "";
-    let poller = null;
+    let paymentInterval = null;
 
     function setCat(c) {
         cat = c;
         document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`btn-${c}`).classList.add('active');
-        const p = {
+        const placeholders = {
             tenant: "Ask about rent, deposits, or evictions...",
-            employment: "Ask about dismissal or leave...",
+            employment: "Ask about contracts, dismissal, or leave...",
             land: "Ask about title deeds or land buying...",
-            family: "Ask about child maintenance or divorce...",
-            traffic: "Ask about traffic fines or police stops..."
+            family: "Ask about child maintenance, custody, or divorce...",
+            traffic: "Ask about traffic fines or accidents..."
         };
-        document.getElementById("q").placeholder = p[c];
+        document.getElementById("q").placeholder = placeholders[c];
     }
 
     async function askAi(checkId = null) {
@@ -84,62 +84,88 @@
         lastQ = question;
 
         btn.disabled = true;
-        resDiv.innerHTML = "<p style='text-align:center;'>⏳ Analyzing Kenyan Law...</p>";
+        resDiv.innerHTML = `<p style="text-align:center; font-weight:500;">⏳ Sheria AI is generating your deep-dive...</p>`;
 
         try {
-            console.log(`Connecting to: ${API}/ask-ai`);
             const response = await fetch(`${API}/ask-ai`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({ question, category: cat, checkout_id: checkId })
             });
             
-            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
             const data = await response.json();
 
+            if (!response.ok) {
+                resDiv.innerHTML = `<p style="color:red; text-align:center;">⚠️ AI Error: ${data.error || 'Server error'}. Please try again.</p>`;
+                return;
+            }
+
             if (data.status === "premium") {
-                resDiv.innerHTML = `<div class="premium-content"><h3>📋 Full Deep-Dive</h3>${data.content}</div>`;
+                // Formatting: Convert double newlines to breaks for readability
+                const formattedContent = data.content.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+                resDiv.innerHTML = `<div class="premium-content"><h3>📋 Full Deep-Dive Result</h3>${formattedContent}</div>`;
+                resDiv.scrollIntoView({ behavior: 'smooth' });
             } else {
                 resDiv.innerHTML = `
                     <div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div>
                     <div class="paywall">
-                        <h4>🔒 Unlock Full Citations (KSh 20)</h4>
-                        <input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; border-radius:8px; border:1px solid #ccc;"><br><br>
-                        <button class="ask-btn" id="payBtn" style="background:var(--gold);color:black;" onclick="pay()">Pay via M-Pesa</button>
-                        <div id="pStat" style="margin-top:10px; font-weight:bold;"></div>
+                        <h4>🔒 Unlock Detailed Legal Sections</h4>
+                        <p>Get the deep-dive analysis for <strong>KSh 20</strong></p>
+                        <input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; max-width:280px; margin-bottom:12px; border-radius:8px; border:1px solid #ccc;"><br>
+                        <button class="ask-btn" style="background:var(--gold);color:black;max-width:280px;" id="payBtn" onclick="pay()">Pay via M-Pesa</button>
+                        <div id="pStat" style="margin-top:12px; font-weight:600;"></div>
                     </div>`;
             }
         } catch (e) {
-            console.error("Fetch Error:", e);
-            resDiv.innerHTML = `<p style='color:red;text-align:center;'>Connection Error. Check the browser console (F12) for details.</p>`;
-        } finally { btn.disabled = false; }
+            resDiv.innerHTML = "<p style='color:red;text-align:center;'>The server is taking too long. Please refresh and try again.</p>";
+        } finally {
+            btn.disabled = false;
+        }
     }
 
     async function pay() {
-        const phone = document.getElementById("phone").value;
+        const pInput = document.getElementById("phone").value;
         const pStat = document.getElementById("pStat");
-        if(!phone) return alert("Enter M-Pesa number");
-        pStat.innerText = "⏳ Initializing...";
+        const payBtn = document.getElementById("payBtn");
+
+        if(!pInput) return alert("Please enter your M-Pesa phone number");
+        if (paymentInterval) clearInterval(paymentInterval);
+
+        pStat.innerText = "⏳ Requesting M-Pesa payment...";
+        payBtn.disabled = true;
+
         try {
             const res = await fetch(`${API}/stkpush`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ phone })
+                body: JSON.stringify({ phone: pInput })
             });
             const data = await res.json();
-            if(!data.checkout_id) throw new Error("STK Failed");
+            
+            if (!data.checkout_id) {
+                pStat.innerText = "❌ M-Pesa failed. Try again.";
+                payBtn.disabled = false;
+                return;
+            }
 
-            pStat.innerText = "📩 Check your phone for prompt...";
-            poller = setInterval(async () => {
-                const check = await fetch(`${API}/check-payment/${data.checkout_id}`);
-                const r = await check.json();
-                if (r.status === "paid") {
-                    clearInterval(poller);
-                    pStat.innerText = "✅ Paid!";
-                    askAi(data.checkout_id);
-                }
+            pStat.innerText = "📩 Prompt sent! Enter your PIN on your phone...";
+
+            paymentInterval = setInterval(async () => {
+                try {
+                    const check = await fetch(`${API}/check-payment/${data.checkout_id}`);
+                    const r = await check.json();
+                    if (r.status === "paid") {
+                        clearInterval(paymentInterval);
+                        pStat.innerText = "✅ Payment Confirmed!";
+                        askAi(data.checkout_id);
+                    }
+                } catch (e) {}
             }, 4000);
-        } catch (e) { pStat.innerText = "❌ Payment failed."; }
+
+        } catch (e) { 
+            pStat.innerText = "❌ Connection failed. Check your internet."; 
+            payBtn.disabled = false;
+        }
     }
 </script>
 </body>
