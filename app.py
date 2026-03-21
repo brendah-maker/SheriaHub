@@ -8,11 +8,9 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-# --- 1. UPDATED CORS CONFIGURATION ---
-# "origins": "*" allows your Vercel testing links to talk to Render without errors.
-CORS(app, resources={r"/*": {
-    "origins": "*" 
-}})
+# --- 1. OPEN CORS FOR TESTING ---
+# This allows ANY domain (including your Vercel test links) to talk to the backend.
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # --- 2. DATABASE CONFIGURATION ---
 uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
@@ -34,8 +32,6 @@ with app.app_context():
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY")
-
-# Check if we are in Sandbox or Live
 IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
 BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
@@ -43,49 +39,55 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 @app.route('/')
 def health():
-    return jsonify({"status": "active", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
+    return jsonify({"status": "Online", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
+
+# NEW: Use this to check if your Groq Connection is actually working!
+@app.route('/test-ai')
+def test_ai():
+    if not client: return "❌ Groq Key Missing in Render Env Variables", 500
+    try:
+        chat = client.chat.completions.create(
+            messages=[{"role": "user", "content": "Hi"}],
+            model="llama-3.1-8b-instant"
+        )
+        return f"✅ Groq is Connected! Response: {chat.choices[0].message.content}"
+    except Exception as e:
+        return f"❌ Groq Connection Error: {str(e)}", 500
 
 # --- 4. AI CONSULTATION LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    if not client:
-        print("❌ AI Error: Groq Client not initialized. Check GROQ_API_KEY.")
-        return jsonify({"error": "AI client not initialized"}), 500
-    
+    if not client: return jsonify({"error": "AI not initialized"}), 500
     try:
         data = request.get_json()
         question = data.get("question", "")
         category = data.get("category", "tenant")
         checkout_id = data.get("checkout_id")
 
-        print(f"--- Processing AI Request [Category: {category}] ---")
-
-        # Check Payment Status
         is_paid = False
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if payment and payment.status == "paid":
                 is_paid = True
 
-        # Mapping Categories to Kenyan Acts
-        if category == "employment":
-            legal_context = "Expert in Kenyan Employment Law (Employment Act 2007)."
-        elif category == "land":
-            legal_context = "Expert in Kenyan Land Law (Land Act 2012, Land Registration Act)."
-        elif category == "family":
-            legal_context = "Expert in Kenyan Family Law (Marriage Act, Law of Succession Act)."
-        elif category == "traffic":
-            legal_context = "Expert in Kenyan Traffic Law (Traffic Act Cap 403) and Motorists' Rights."
-        else:
-            legal_context = "Expert in Kenyan Tenancy Law (Rent Restriction Act)."
+        law_map = {
+            "employment": "Employment Act 2007",
+            "land": "Land Act 2012",
+            "family": "Marriage Act",
+            "traffic": "Traffic Act Cap 403",
+            "tenant": "Rent Restriction Act"
+        }
+        law = law_map.get(category, "Kenyan Law")
             
         system_prompt = (
-            f"You are a {legal_context}. Return ONLY a JSON object. "
-            "Structure: {\"free_summary\": \"one sentence\", \"paid_deep_dive\": \"comprehensive markdown with section citations\"}"
+            f"You are a Kenyan legal expert specializing in {law}. "
+            "You MUST return a valid JSON object. "
+            "JSON Structure: {\"free_summary\": \"one sentence\", \"paid_deep_dive\": \"markdown details\"}"
         )
 
+        # Using llama-3.1-8b-instant because it is much faster (prevents timeouts)
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile", 
+            model="llama-3.1-8b-instant", 
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": question}
@@ -93,18 +95,16 @@ def ask_ai():
             response_format={"type": "json_object"}
         )
         
-        ai_raw = json.loads(completion.choices[0].message.content)
-        print("✅ AI Analysis Complete")
-
+        ai_data = json.loads(completion.choices[0].message.content)
+        
         return jsonify({
             "status": "premium" if is_paid else "free",
-            "summary": ai_raw.get("free_summary", "Summary unavailable."),
-            "content": ai_raw.get("paid_deep_dive") if is_paid else "Payment required to unlock deep dive."
+            "summary": ai_data.get("free_summary", "Summary unavailable."),
+            "content": ai_data.get("paid_deep_dive") if is_paid else "Payment required to unlock deep dive."
         })
-        
     except Exception as e:
-        print(f"🔥 AI Crash: {str(e)}")
-        return jsonify({"error": "An internal error occurred processing the AI request."}), 500
+        print(f"DEBUG ERROR: {e}")
+        return jsonify({"error": "AI processing failed"}), 500
 
 # --- 5. LIVE M-PESA STK PUSH ---
 @app.route('/stkpush', methods=['POST'])
@@ -112,74 +112,39 @@ def stk_push():
     try:
         data = request.get_json()
         phone = data.get("phone", "").strip().replace("+", "")
+        if phone.startswith("0"): phone = "254" + phone[1:]
+        elif (phone.startswith("7") or phone.startswith("1")) and len(phone) == 9: phone = "254" + phone
         
-        # Clean phone number for Kenyan Standards
-        if phone.startswith("0"): 
-            phone = "254" + phone[1:]
-        elif (phone.startswith("7") or phone.startswith("1")) and len(phone) == 9:
-            phone = "254" + phone
+        payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
+        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
         
-        payload = {
-            "public_key": INTASEND_PUBLISHABLE_KEY,
-            "amount": 20, 
-            "phone_number": phone,
-            "api_ref": "SheriaHub-Premium",
-        }
-
-        headers = {
-            "Authorization": f"Bearer {INTASEND_SECRET_KEY}",
-            "Content-Type": "application/json"
-        }
-
-        print(f"--- Sending M-Pesa STK Push to {phone} ---")
-        response = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
-        res_data = response.json()
+        res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
+        res_data = res.json()
         
-        if response.status_code != 200:
-            print(f"❌ Payment Initialization Failed: {res_data}")
-            return jsonify({"error": "Payment failed", "details": res_data}), 400
-
         invoice_id = res_data.get("invoice", {}).get("invoice_id")
         if invoice_id:
-            new_payment = Payment(id=invoice_id, status="pending")
-            db.session.add(new_payment)
+            db.session.add(Payment(id=invoice_id, status="pending"))
             db.session.commit()
-            print(f"✅ Payment {invoice_id} recorded as Pending")
             return jsonify({"checkout_id": invoice_id})
-        
-        return jsonify({"error": "No Invoice ID received from Gateway"}), 400
+        return jsonify({"error": "M-Pesa rejected request", "details": res_data}), 400
     except Exception as e:
-        print(f"🔥 STK Push Crash: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# --- 6. STATUS CHECKER ---
 @app.route('/check-payment/<checkout_id>')
 def check_payment(checkout_id):
-    if not checkout_id or checkout_id == "undefined":
-        return jsonify({"status": "error"}), 400
-
     payment = Payment.query.get(checkout_id)
-    if payment and payment.status == "paid":
-        return jsonify({"status": "paid"})
-    
+    if payment and payment.status == "paid": return jsonify({"status": "paid"})
     try:
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
         res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
-        state = res.json().get("invoice", {}).get("state")
-
-        if state == "COMPLETE":
-            if not payment:
-                payment = Payment(id=checkout_id, status="paid")
-                db.session.add(payment)
-            else:
-                payment.status = "paid"
+        if res.json().get("invoice", {}).get("state") == "COMPLETE":
+            if not payment: payment = Payment(id=checkout_id, status="paid")
+            else: payment.status = "paid"
+            db.session.add(payment)
             db.session.commit()
-            print(f"✅ Payment {checkout_id} confirmed as PAID")
             return jsonify({"status": "paid"})
-    except Exception as e:
-        print(f"Status check error: {e}")
-        
-    return jsonify({"status": payment.status if payment else "pending"})
+    except: pass
+    return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
