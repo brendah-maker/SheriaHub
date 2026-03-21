@@ -9,6 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 
 # --- 1. CORS CONFIGURATION ---
+# Open for testing so your Vercel branches can talk to Render
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # --- 2. DATABASE CONFIGURATION ---
@@ -24,9 +25,6 @@ class Payment(db.Model):
     id = db.Column(db.String(100), primary_key=True)
     status = db.Column(db.String(20), default="pending")
 
-with app.app_context():
-    db.create_all()
-
 # --- 3. API KEYS & URLS ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY")
@@ -36,9 +34,13 @@ BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
+# Render health check (Important for port detection)
 @app.route('/')
+@app.route('/health')
 def health():
-    return jsonify({"status": "Online", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
+    # Lazy-create tables on first request to speed up startup
+    db.create_all()
+    return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
 
 # --- 4. AI CONSULTATION LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
@@ -80,11 +82,11 @@ def ask_ai():
         
         return jsonify({
             "status": "premium" if is_paid else "free",
-            "summary": ai_data.get("free_summary", "Summary unavailable."),
-            "content": ai_data.get("paid_deep_dive") if is_paid else "Payment required to unlock deep dive."
+            "summary": ai_data.get("free_summary"),
+            "content": ai_data.get("paid_deep_dive") if is_paid else "Payment required."
         })
     except Exception as e:
-        return jsonify({"error": "AI failed"}), 500
+        return jsonify({"error": str(e)}), 500
 
 # --- 5. M-PESA STK PUSH ---
 @app.route('/stkpush', methods=['POST'])
@@ -110,15 +112,12 @@ def stk_push():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- 6. CALLBACK ENDPOINT (Fixes the 404 and Webhook Failures) ---
+# --- 6. CALLBACK ENDPOINT ---
 @app.route('/api/callback', methods=['POST'])
 def callback():
     data = request.get_json()
     invoice_id = data.get("invoice_id")
     state = data.get("state") 
-    
-    print(f"WEBHOOK RECEIVED: Invoice {invoice_id} is now {state}")
-    
     if invoice_id and state == "COMPLETE":
         payment = Payment.query.get(invoice_id)
         if not payment:
@@ -127,32 +126,25 @@ def callback():
         else:
             payment.status = "paid"
         db.session.commit()
-        print(f"✅ Callback confirmed PAID for {invoice_id}")
-            
     return jsonify({"status": "received"}), 200
 
-# --- 7. STATUS CHECKER (Polling fallback) ---
+# --- 7. STATUS CHECKER ---
 @app.route('/check-payment/<checkout_id>')
 def check_payment(checkout_id):
     if not checkout_id or checkout_id == "undefined":
         return jsonify({"status": "error"}), 400
-
     payment = Payment.query.get(checkout_id)
     if payment and payment.status == "paid":
         return jsonify({"status": "paid"})
-    
     try:
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
         url = f"{BASE_URL}/payment/status/{checkout_id}/"
         res = requests.get(url, headers=headers)
         state = res.json().get("invoice", {}).get("state", "PENDING")
-
         if state == "COMPLETE":
-            if not payment:
-                payment = Payment(id=checkout_id, status="paid")
-                db.session.add(payment)
-            else:
-                payment.status = "paid"
+            if not payment: payment = Payment(id=checkout_id, status="paid")
+            else: payment.status = "paid"
+            db.session.add(payment)
             db.session.commit()
             return jsonify({"status": "paid"})
     except: pass
