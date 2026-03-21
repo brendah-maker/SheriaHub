@@ -4,101 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SheriaHub - Kenya's Legal AI</title>
-    <!-- Modern Professional Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-    
     <style>
         :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f5f7fa; --white: #ffffff; }
-        
-        /* Layout Fix for Bottom Footer */
-        html, body { height: 100%; margin: 0; }
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background: var(--bg); 
-            display: flex; 
-            flex-direction: column; 
-            min-height: 100vh; 
-            color: #333; 
-        }
-
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; min-height: 100vh; color: #333; }
         h1, h2, h3, .navbar div { font-family: 'Poppins', sans-serif; }
-
-        /* Navigation & Hero */
         .navbar { background: var(--navy); color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--gold); flex-shrink: 0; }
         .hero { background: var(--navy); color: white; text-align: center; padding: 40px 20px 80px; flex-shrink: 0; }
         .hero h1 { margin: 0; font-size: 2rem; }
         .hero p { opacity: 0.9; margin-top: 10px; }
-
         .main-content { flex: 1; display: flex; flex-direction: column; }
-
-        /* Category Selector - Adaptable for mobile */
-        .category-selector { 
-            display: flex; 
-            justify-content: center; 
-            gap: 10px; 
-            margin: -30px auto 20px; 
-            padding: 0 15px; 
-            z-index: 10; 
-            position: relative; 
-            flex-wrap: wrap; /* Allows buttons to wrap on small screens */
-            max-width: 800px;
-        }
-        .cat-btn { 
-            padding: 12px 20px; 
-            border-radius: 25px; 
-            border: 2px solid var(--gold); 
-            background: var(--white); 
-            cursor: pointer; 
-            font-weight: bold; 
-            transition: 0.3s; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
-            font-size: 0.9rem;
-        }
+        .category-selector { display: flex; justify-content: center; gap: 10px; margin: -30px auto 25px; padding: 0 15px; flex-wrap: wrap; z-index: 10; position: relative; max-width: 900px; }
+        .cat-btn { padding: 12px 18px; border-radius: 25px; border: 2px solid var(--gold); background: var(--white); cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 0.85rem; }
         .cat-btn.active { background: var(--gold); color: black; }
-
-        /* Main Chat Container */
-        .chat-container { width: 95%; max-width: 600px; margin: 20px auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); box-sizing: border-box; }
-        textarea { width: 100%; height: 100px; padding: 15px; border-radius: 10px; border: 2px solid #ddd; font-size: 16px; margin-bottom: 10px; resize: none; box-sizing: border-box; outline: none; transition: border-color 0.3s; font-family: inherit; }
-        textarea:focus { border-color: var(--navy); }
-        
-        .ask-btn { width: 100%; padding: 15px; background: var(--navy); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: background 0.3s; font-family: 'Poppins', sans-serif; }
+        .chat-container { width: 95%; max-width: 650px; margin: 20px auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); box-sizing: border-box; }
+        textarea { width: 100%; height: 120px; padding: 15px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 16px; margin-bottom: 15px; resize: none; box-sizing: border-box; outline: none; font-family: inherit; }
+        .ask-btn { width: 100%; padding: 16px; background: var(--navy); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-family: 'Poppins', sans-serif; transition: 0.3s; }
         .ask-btn:disabled { background: #a0aec0; cursor: not-allowed; }
-
-        /* Results & Paywall */
-        .legal-card { padding: 20px; border-left: 5px solid var(--navy); background: #f9fafb; margin-top: 20px; border-radius: 8px; text-align: left; }
-        .paywall { background: #fffdf2; border: 2px dashed var(--gold); padding: 25px; border-radius: 12px; margin-top: 20px; text-align: center; }
-        .premium-content { background: #eefdf3; border: 2px solid #27ae60; padding: 25px; border-radius: 12px; margin-top: 20px; line-height: 1.8; text-align: left; white-space: pre-wrap; }
-
-        .credits-badge { background: var(--gold); padding: 5px 12px; border-radius: 8px; font-weight: bold; display: inline-block; margin-bottom: 10px; font-size: 0.85rem; }
-
-        /* Features Section */
+        .legal-card { padding: 25px; border-left: 6px solid var(--navy); background: #f8fafc; margin-top: 25px; border-radius: 12px; text-align: left; }
+        .paywall { background: #fffbeb; border: 2px dashed var(--gold); padding: 30px; border-radius: 15px; margin-top: 25px; text-align: center; }
+        .premium-content { background: #f0fff4; border: 2px solid #38a169; padding: 30px; border-radius: 15px; margin-top: 25px; line-height: 1.8; text-align: left; white-space: pre-wrap; }
+        .credits-badge { background: var(--gold); padding: 5px 12px; border-radius: 8px; font-weight: bold; display: inline-block; margin-bottom: 10px; font-size: 0.8rem; }
         .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; padding: 40px 5%; max-width: 1100px; margin: 0 auto; width: 100%; box-sizing: border-box; }
         .feature-box { background: white; padding: 25px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-top: 4px solid var(--gold); }
-        .feature-box h3 { color: var(--navy); margin-bottom: 10px; }
-        
-        .coming-soon { text-align: center; padding: 40px; opacity: 0.7; font-style: italic; background: #eaedf2; margin-top: 20px; width: 100%; box-sizing: border-box; }
-
-        /* Footer */
-        .footer { 
-            background: var(--navy); 
-            color: white; 
-            text-align: center; 
-            padding: 30px 20px; 
-            border-top: 5px solid var(--gold); 
-            margin-top: auto; 
-            width: 100%; 
-            box-sizing: border-box; 
-            flex-shrink: 0;
-        }
-        .footer p { margin: 5px 0; font-size: 0.9rem; line-height: 1.5; }
-
-        /* Responsive Fixes */
+        .footer { background: var(--navy); color: white; text-align: center; padding: 40px 20px; border-top: 5px solid var(--gold); margin-top: auto; }
         @media (max-width: 480px) {
             .hero h1 { font-size: 1.4rem; }
-            .hero p { font-size: 0.85rem; }
-            .cat-btn { font-size: 0.75rem; padding: 10px 14px; }
-            .category-selector { gap: 8px; margin-top: -45px; }
-            .chat-container { padding: 15px; }
+            .cat-btn { font-size: 0.7rem; padding: 8px 12px; }
+            .category-selector { gap: 6px; margin-top: -45px; }
         }
     </style>
 </head>
@@ -112,7 +45,7 @@
     <div class="main-content">
         <header class="hero">
             <h1>Your Legal Rights, Simplified.</h1>
-            <p>Instant legal intelligence for Citizens and Employees.</p>
+            <p>Instant legal intelligence for Citizens and Motorists.</p>
         </header>
 
         <div class="category-selector">
@@ -121,6 +54,7 @@
             <button class="cat-btn" id="btn-land" onclick="setCat('land')">🌳 Land</button>
             <button class="cat-btn" id="btn-family" onclick="setCat('family')">👨‍👩‍👧 Family</button>
             <button class="cat-btn" id="btn-traffic" onclick="setCat('traffic')">🚗 Traffic</button>
+            <button class="cat-btn" id="btn-civil_criminal" onclick="setCat('civil_criminal')">⚖️ Civil/Criminal</button>
         </div>
 
         <main class="chat-container">
@@ -130,23 +64,10 @@
         </main>
 
         <section class="features">
-            <div class="feature-box">
-                <h3>⚖️ Statutory Logic</h3>
-                <p>AI analyzes the Children Act 2022, Employment Act, and Traffic Act to give you accurate facts.</p>
-            </div>
-            <div class="feature-box">
-                <h3>🛡️ Protect Your Rights</h3>
-                <p>Know exactly what to say to a landlord or employer before a dispute escalates.</p>
-            </div>
-            <div class="feature-box">
-                <h3>💰 Unbeatable Value</h3>
-                <p>Professional summaries for free, and 2 deep-dives for the price of a cup of tea (KSh 20).</p>
-            </div>
+            <div class="feature-box"><h3>⚖️ Statutory Logic</h3><p>AI analyzes the Children Act, Penal Code, and Employment Act to give you facts.</p></div>
+            <div class="feature-box"><h3>🛡️ Protect Your Rights</h3><p>Know exactly what to say to a landlord, employer, or police before a dispute escalates.</p></div>
+            <div class="feature-box"><h3>💰 Unbeatable Value</h3><p>summaries for free, and 2 deep-dives for KSh 20 via M-Pesa.</p></div>
         </section>
-
-        <div class="coming-soon">
-            <p>🚀 <strong>Coming Soon:</strong> Small Claims Court Filing, and Business Registration Guides.</p>
-        </div>
     </div>
 
     <footer class="footer">
@@ -160,7 +81,6 @@
     let lastQ = "";
     let paymentInterval = null;
 
-    // Persistent Storage Helpers
     const savePaidId = (id) => localStorage.setItem('sheria_payment_id', id);
     const getPaidId = () => localStorage.getItem('sheria_payment_id');
     const clearPaidId = () => localStorage.removeItem('sheria_payment_id');
@@ -169,13 +89,13 @@
         cat = c;
         document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`btn-${c}`).classList.add('active');
-        
         const placeholders = {
             tenant: "Ask about rent, deposits, or evictions...",
-            employment: "Ask about contracts, dismissal, or leave...",
+            employment: "Ask about dismissal or leave...",
             land: "Ask about title deeds or land buying...",
-            family: "Ask about child maintenance, custody, or divorce...",
-            traffic: "Ask about traffic fines or accidents..."
+            family: "Ask about child maintenance or divorce...",
+            traffic: "Ask about traffic fines or accidents...",
+            civil_criminal: "Ask about theft, assault, or property damage..."
         };
         document.getElementById("q").placeholder = placeholders[c];
     }
@@ -199,97 +119,50 @@
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({ question, category: cat, checkout_id: activeId })
             });
-            
             const data = await response.json();
 
-            // Safety Gate: Check for undefined or failed AI responses
             if (!data || !data.summary || data.summary === "undefined" || data.summary.length < 5) {
-                resDiv.innerHTML = `
-                    <div style="text-align:center; padding:20px; background:#fff5f5; border:1px solid #feb2b2; border-radius:12px; color:#c53030;">
-                        ⚠️ <strong>Analysis failed:</strong> Please rephrase your question and try again.
-                    </div>`;
+                resDiv.innerHTML = `<div style="text-align:center; padding:20px; background:#fff5f5; border:1px solid #feb2b2; border-radius:12px; color:#c53030;">⚠️ <strong>Analysis failed:</strong> Please rephrase your question and try again.</div>`;
                 return; 
             }
 
             if (data.status === "premium") {
                 const formatted = data.content.replace(/\n/g, '<br>');
-                resDiv.innerHTML = `
-                    <div class="credits-badge">🎟️ ${data.credits_left} deep-dives remaining</div>
-                    <div class="premium-content"><h3>📋 Full Deep-Dive Result</h3>${formatted}</div>`;
-                
-                // Manage credit persistence
+                resDiv.innerHTML = `<div class="credits-badge">🎟️ ${data.credits_left} deep-dives remaining</div><div class="premium-content"><h3>📋 Full Deep-Dive Result</h3>${formatted}</div>`;
                 if (data.credits_left === 0) clearPaidId();
                 else if (activeId) savePaidId(activeId);
-
                 resDiv.scrollIntoView({ behavior: 'smooth' });
             } else {
-                resDiv.innerHTML = `
-                    <div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div>
-                    <div class="paywall">
-                        <h4>🔒 Unlock Detailed Legal Sections</h4>
-                        <p>Get <strong>2 Full Legal Analysis</strong> credits for <strong>KSh 20</strong></p>
-                        <input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; max-width:280px; margin-bottom:12px; border-radius:8px; border:1px solid #ccc;"><br>
-                        <button class="ask-btn" style="background:var(--gold);color:black;max-width:280px;" id="payBtn" onclick="pay()">Pay via M-Pesa</button>
-                        <div id="pStat" style="margin-top:12px; font-weight:600;"></div>
-                    </div>`;
+                resDiv.innerHTML = `<div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div><div class="paywall"><h4>🔒 Unlock Detailed Legal Sections</h4><p>Get <strong>2 Full Legal Analysis</strong> credits for <strong>KSh 20</strong></p><input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; max-width:280px; margin-bottom:12px; border-radius:8px; border:1px solid #ccc;"><br><button class="ask-btn" style="background:var(--gold);color:black;max-width:280px;" id="payBtn" onclick="pay()">Pay via M-Pesa</button><div id="pStat" style="margin-top:12px; font-weight:600;"></div></div>`;
             }
-        } catch (e) {
-            resDiv.innerHTML = "<p style='color:red;text-align:center;'>The server is busy. Please try clicking the button again.</p>";
-        } finally {
-            btn.disabled = false;
-        }
+        } catch (e) { resDiv.innerHTML = "<p style='color:red;text-align:center;'>The server is busy. Please try clicking the button again.</p>"; }
+        finally { btn.disabled = false; }
     }
 
     async function pay() {
         const pInput = document.getElementById("phone").value;
         const pStat = document.getElementById("pStat");
         const payBtn = document.getElementById("payBtn");
-
-        if(!pInput) return alert("Please enter your M-Pesa number");
+        if(!pInput) return alert("Enter M-Pesa number");
         if (paymentInterval) clearInterval(paymentInterval);
 
-        // Requested wording
         pStat.innerText = "⏳ Initializing STK Push...";
         pStat.style.color = "black";
         payBtn.disabled = true;
 
         try {
-            const res = await fetch(`${API}/stkpush`, {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ phone: pInput })
-            });
+            const res = await fetch(`${API}/stkpush`, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ phone: pInput }) });
             const data = await res.json();
-            
-            if (!data.checkout_id) {
-                pStat.innerText = "❌ M-Pesa failed. Try again.";
-                pStat.style.color = "red";
-                payBtn.disabled = false;
-                return;
-            }
-
-            // Requested wording
+            if (!data.checkout_id) { pStat.innerText = "❌ M-Pesa failed. Try again."; pStat.style.color = "red"; payBtn.disabled = false; return; }
             pStat.innerText = "📩 Prompt sent! Enter PIN on your phone...";
-
             paymentInterval = setInterval(async () => {
                 try {
                     const check = await fetch(`${API}/check-payment/${data.checkout_id}`);
                     const r = await check.json();
-                    if (r.status === "paid") {
-                        clearInterval(paymentInterval);
-                        pStat.innerText = "✅ Payment Confirmed!";
-                        pStat.style.color = "green";
-                        savePaidId(data.checkout_id);
-                        askAi(data.checkout_id);
-                    }
+                    if (r.status === "paid") { clearInterval(paymentInterval); pStat.innerText = "✅ Payment Confirmed!"; pStat.style.color = "green"; savePaidId(data.checkout_id); askAi(data.checkout_id); }
                 } catch (e) {}
             }, 4000);
-
-        } catch (e) { 
-            pStat.innerText = "❌ Connection failed. Check your internet."; 
-            pStat.style.color = "red";
-            payBtn.disabled = false;
-        }
+        } catch (e) { pStat.innerText = "❌ Connection failed."; pStat.style.color = "red"; payBtn.disabled = false; }
     }
 </script>
 </body>
