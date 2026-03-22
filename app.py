@@ -9,9 +9,10 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 
 app = Flask(__name__)
+# Open CORS for testing and production
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- Database ---
+# --- 1. DATABASE CONFIGURATION ---
 uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
 if uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -25,6 +26,7 @@ class Payment(db.Model):
     status = db.Column(db.String(20), default="pending")
     credits = db.Column(db.Integer, default=0)
 
+# Faster startup: Create tables only if they don't exist
 with app.app_context():
     db.create_all()
     try:
@@ -33,7 +35,7 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
-# --- Config ---
+# --- 2. API KEYS ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY", "").strip()
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY", "").strip()
@@ -42,13 +44,15 @@ BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
+@app.route('/')
 @app.route('/health')
 def health():
-    return jsonify({"status": "Healthy"}), 200
+    return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
 
-# --- THE PERFECT PROMPT & PARSING ---
+# --- 3. ROBUST AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
+    if not client: return jsonify({"error": "AI not initialized"}), 500
     try:
         data = request.get_json()
         question = data.get("question", "")
@@ -58,8 +62,19 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
+        # Credit Consumption Logic
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
+            if not payment:
+                try:
+                    headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
+                    res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
+                    if res.json().get("invoice", {}).get("state") == "COMPLETE":
+                        payment = Payment(id=checkout_id, status="paid", credits=2)
+                        db.session.add(payment)
+                        db.session.commit()
+                except: pass
+
             if payment and payment.status == "paid" and payment.credits > 0:
                 is_paid = True
                 payment.credits -= 1
@@ -68,53 +83,51 @@ def ask_ai():
 
         law_map = {
             "employment": "Employment Act 2007",
-            "land": "Land Act 2012",
-            "family": "Marriage Act & Children Act",
+            "land": "Land Act 2012 & Land Registration Act",
+            "family": "Children Act 2022, Marriage Act, and Succession Act",
             "traffic": "Traffic Act Cap 403",
             "tenant": "Rent Restriction Act",
-            "civil_criminal": "Penal Code & Civil Procedure"
+            "civil_criminal": "The Penal Code of Kenya and Civil Procedure Act"
         }
-        
-        # INSTRUCTION: Be helpful in Summary, be an expert in Deep Dive.
+        law = law_map.get(category, "Kenyan Law")
+            
         prompt = (
-            f"You are a Kenyan legal expert on {law_map.get(category)}. "
+            f"You are a Kenyan legal expert specializing in {law}. "
             f"User Question: {question}\n\n"
-            "Format your response EXACTLY like this:\n\n"
-            "SUMMARY: Provide a clear, helpful 2-3 sentence answer that explains if they have a case or what their general right is. "
-            "IMPORTANT: In this summary, do NOT mention specific Section numbers or specific Act names. Just tell them the facts.\n\n"
-            "DEEP_DIVE: Provide the full professional breakdown. You MUST include specific citations (e.g., Section 45 of the Employment Act), "
-            "the specific court or tribunal to visit, a list of required documents, and the exact steps to file a claim."
+            "Format your response EXACTLY like this:\n"
+            "SUMMARY: [Provide a helpful 2-3 sentence answer explaining the legal position without citing specific sections]\n"
+            "DEEP_DIVE: [Provide the full legal breakdown with specific citations, court names, and filing steps]"
         )
 
-        chat = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama-3.1-8b-instant",
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant", 
+            messages=[{"role": "user", "content": prompt}]
         )
         
-        full_text = chat.choices[0].message.content
+        full_text = completion.choices[0].message.content
+        summary = ""
+        deep_dive = ""
         
-        # Robust Clean-up and Split
-        clean_text = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
-        
-        if "DEEP_DIVE:" in clean_text:
-            parts = clean_text.split("DEEP_DIVE:")
+        # Robust Parsing
+        clean_txt = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
+        if "DEEP_DIVE:" in clean_txt:
+            parts = clean_txt.split("DEEP_DIVE:")
             summary = parts[0].replace("SUMMARY:", "").strip()
             deep_dive = parts[1].strip()
         else:
-            # Fallback if AI creates its own format
-            summary = "Based on your situation, there are legal remedies available under Kenyan law. Unlock the deep-dive to see the specific steps to take."
+            summary = full_text.split('.')[0] + "."
             deep_dive = full_text
 
         return jsonify({
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
             "summary": summary,
-            "content": deep_dive if is_paid else "🔒 Unlock for specific Sections of the Law, court procedures, and filing steps."
+            "content": deep_dive if is_paid else "Payment required for deep dive."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- Payment Routes ---
+# --- 4. PAYMENT ROUTES ---
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
@@ -130,22 +143,9 @@ def stk_push():
             db.session.add(Payment(id=inv_id, status="pending", credits=0))
             db.session.commit()
             return jsonify({"checkout_id": inv_id})
-        return jsonify({"error": "M-Pesa Failed"}), 400
+        return jsonify({"error": "Payment rejected", "details": res_data}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-@app.route('/api/callback', methods=['POST'])
-def callback():
-    data = request.get_json()
-    inv_id = data.get("invoice_id")
-    if inv_id and data.get("state") == "COMPLETE":
-        p = Payment.query.get(inv_id)
-        if not p: db.session.add(Payment(id=inv_id, status="paid", credits=2))
-        else:
-            p.status = "paid"
-            p.credits = 2
-        db.session.commit()
-    return jsonify({"ok": True}), 200
 
 @app.route('/check-payment/<id>')
 def check(id):
@@ -166,4 +166,5 @@ def check(id):
     return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
