@@ -46,7 +46,7 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 def health():
     return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
 
-# --- 3. IMPROVED AI LOGIC (No Truncation) ---
+# --- 3. UPDATED AI LOGIC (STRICT GATING) ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     try:
@@ -68,19 +68,22 @@ def ask_ai():
 
         law_map = {
             "employment": "Employment Act 2007",
-            "land": "Land Act 2012 & Land Registration Act",
+            "land": "Land Act 2012 & Registration Act",
             "family": "Marriage Act, Children Act 2022",
             "traffic": "Traffic Act Cap 403",
             "tenant": "Rent Restriction Act",
-            "civil_criminal": "Penal Code of Kenya & Civil Procedure"
+            "civil_criminal": "Penal Code and Civil Procedure"
         }
         
+        # PROMPT FIX: We explicitly tell AI to keep the summary very short and general.
         prompt = (
             f"You are a Kenyan legal expert on {law_map.get(category)}. "
             f"User Question: {question}\n\n"
-            "Provide your response in two distinct parts exactly like this:\n"
-            "SUMMARY: [Provide a full, clear paragraph explaining the core legal answer without cutting it off]\n"
-            "DEEP_DIVE: [Provide the detailed legal sections and citations]"
+            "Respond strictly in this two-part format:\n\n"
+            "SUMMARY: Provide a general, high-level answer in ONLY one or two sentences. "
+            "DO NOT mention specific Acts, Section numbers, or court names here. Keep it vague but helpful.\n\n"
+            "DEEP_DIVE: Provide the comprehensive legal breakdown. Include specific Acts (e.g., Children Act 2022), "
+            "Section citations, the exact court to visit, required documents, and a step-by-step guide."
         )
 
         chat = client.chat.completions.create(
@@ -90,8 +93,7 @@ def ask_ai():
         
         txt = chat.choices[0].message.content
         
-        # SMART PARSING: Handle bold markers and case-sensitivity
-        # We split by 'DEEP_DIVE:' but we remove any bold stars '**' around labels
+        # Clean markers to avoid 'undefined' errors
         clean_txt = txt.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
         
         if "DEEP_DIVE:" in clean_txt:
@@ -99,44 +101,51 @@ def ask_ai():
             summary = parts[0].replace("SUMMARY:", "").strip()
             deep_dive = parts[1].strip()
         else:
-            # Fallback if AI missed the marker: Take first paragraph as summary
-            paragraphs = txt.split('\n\n')
-            summary = paragraphs[0].replace("SUMMARY:", "").strip()
+            # Fallback if AI gets the format wrong
+            summary = "Legal guidance is available for this query. Unlock the deep-dive to see the specific laws and steps required."
             deep_dive = txt
 
         return jsonify({
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
-            "summary": summary, # This is now full-length
-            "content": deep_dive if is_paid else "Payment required for deep dive."
+            "summary": summary,
+            "content": deep_dive if is_paid else "🔒 Payment required to view specific legal sections, court procedures, and citations."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- 4. PAYMENT ROUTES ---
+# --- 4. PAYMENT & STATUS ROUTES ---
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
         data = request.get_json()
         phone = data.get("phone", "").strip().replace("+", "")
         if phone.startswith("0"): phone = "254" + phone[1:]
-        
         payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
         res_data = res.json()
-        
-        if res.status_code != 200:
-            return jsonify({"error": "Rejected", "details": res_data}), 400
-
         inv_id = res_data.get("invoice", {}).get("invoice_id")
         if inv_id:
             db.session.add(Payment(id=inv_id, status="pending", credits=0))
             db.session.commit()
             return jsonify({"checkout_id": inv_id})
-        return jsonify({"error": "No ID"}), 400
+        return jsonify({"error": "Rejected"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/callback', methods=['POST'])
+def callback():
+    data = request.get_json()
+    inv_id = data.get("invoice_id")
+    if inv_id and data.get("state") == "COMPLETE":
+        p = Payment.query.get(inv_id)
+        if not p: db.session.add(Payment(id=inv_id, status="paid", credits=2))
+        else:
+            p.status = "paid"
+            p.credits = 2
+        db.session.commit()
+    return jsonify({"ok": True}), 200
 
 @app.route('/check-payment/<id>')
 def check(id):
