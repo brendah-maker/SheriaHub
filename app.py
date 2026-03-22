@@ -9,7 +9,6 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 
 app = Flask(__name__)
-# Open CORS for testing and production
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # --- 1. DATABASE CONFIGURATION ---
@@ -26,7 +25,6 @@ class Payment(db.Model):
     status = db.Column(db.String(20), default="pending")
     credits = db.Column(db.Integer, default=0)
 
-# Faster startup: Create tables only if they don't exist
 with app.app_context():
     db.create_all()
     try:
@@ -49,7 +47,7 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 def health():
     return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
 
-# --- 3. ROBUST AI LOGIC ---
+# --- 3. THE "GATED" AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client: return jsonify({"error": "AI not initialized"}), 500
@@ -62,7 +60,6 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
-        # Credit Consumption Logic
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if not payment:
@@ -82,33 +79,34 @@ def ask_ai():
                 db.session.commit()
 
         law_map = {
-            "employment": "Employment Act 2007",
-            "land": "Land Act 2012 & Land Registration Act",
-            "family": "Children Act 2022, Marriage Act, and Succession Act",
-            "traffic": "Traffic Act Cap 403",
-            "tenant": "Rent Restriction Act",
-            "civil_criminal": "The Penal Code of Kenya and Civil Procedure Act"
+            "employment": "Employment Law",
+            "land": "Land & Property Law",
+            "family": "Family & Children Law",
+            "traffic": "Traffic Law",
+            "tenant": "Tenancy Law",
+            "civil_criminal": "Civil & Criminal Law"
         }
-        law = law_map.get(category, "Kenyan Law")
             
-        prompt = (
-            f"You are a Kenyan legal expert specializing in {law}. "
-            f"User Question: {question}\n\n"
-            "Format your response EXACTLY like this:\n"
-            "SUMMARY: [Provide a helpful 2-3 sentence answer explaining the legal position without citing specific sections]\n"
-            "DEEP_DIVE: [Provide the full legal breakdown with specific citations, court names, and filing steps]"
+        system_msg = (
+            f"You are a Kenyan legal expert on {law_map.get(category)}. "
+            "You MUST follow these rules for the response:\n"
+            "1. Start with 'SUMMARY: ' followed by a helpful 1-2 sentence overview. NEVER mention specific Act names or Section numbers here.\n"
+            "2. Then write 'DEEP_DIVE: ' followed by the full details, including Sections, Acts, Court names, and Steps."
         )
 
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
-            messages=[{"role": "user", "content": prompt}]
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": question}
+            ]
         )
         
         full_text = completion.choices[0].message.content
         summary = ""
         deep_dive = ""
         
-        # Robust Parsing
+        # Robust Clean Split
         clean_txt = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
         if "DEEP_DIVE:" in clean_txt:
             parts = clean_txt.split("DEEP_DIVE:")
@@ -122,7 +120,7 @@ def ask_ai():
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
             "summary": summary,
-            "content": deep_dive if is_paid else "Payment required for deep dive."
+            "content": deep_dive if is_paid else "🔒 Payment required for specific Acts, Section citations, and step-by-step court filing guides."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -134,21 +132,39 @@ def stk_push():
         data = request.get_json()
         phone = data.get("phone", "").strip().replace("+", "")
         if phone.startswith("0"): phone = "254" + phone[1:]
+        elif (phone.startswith("7") or phone.startswith("1")) and len(phone) == 9: phone = "254" + phone
+        
         payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
+        
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
         res_data = res.json()
+        
         inv_id = res_data.get("invoice", {}).get("invoice_id")
         if inv_id:
             db.session.add(Payment(id=inv_id, status="pending", credits=0))
             db.session.commit()
             return jsonify({"checkout_id": inv_id})
-        return jsonify({"error": "Payment rejected", "details": res_data}), 400
+        return jsonify({"error": "Rejected"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# FIX: Added Callback Route back in
+@app.route('/api/callback', methods=['POST'])
+def callback():
+    data = request.get_json()
+    inv_id = data.get("invoice_id")
+    if inv_id and data.get("state") == "COMPLETE":
+        p = Payment.query.get(inv_id)
+        if not p: db.session.add(Payment(id=inv_id, status="paid", credits=2))
+        else:
+            p.status = "paid"
+            p.credits = 2
+        db.session.commit()
+    return jsonify({"ok": True}), 200
+
 @app.route('/check-payment/<id>')
-def check(id):
+def check_payment(id):
     p = Payment.query.get(id)
     if p and p.status == "paid": return jsonify({"status": "paid", "credits": p.credits})
     try:
