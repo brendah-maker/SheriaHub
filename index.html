@@ -185,13 +185,12 @@
         </p>
     </footer>
 
-<script>
+    <script>
     const API = "https://sheriahub.onrender.com"; 
     let cat = "tenant";
     let lastQ = "";
-    let paymentInterval = null;
+    let poller = null;
 
-    // Persistent Memory Helpers
     const savePaidId = (id) => localStorage.setItem('sheria_payment_id', id);
     const getPaidId = () => localStorage.getItem('sheria_payment_id');
     const clearPaidId = () => localStorage.removeItem('sheria_payment_id');
@@ -200,15 +199,6 @@
         cat = c;
         document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`btn-${c}`).classList.add('active');
-        const placeholders = {
-            tenant: "Ask about rent, deposits, or evictions...",
-            employment: "Ask about dismissal or leave...",
-            land: "Ask about title deeds or land searches...",
-            family: "Ask about child maintenance or custody...",
-            traffic: "Ask about traffic fines or accidents...",
-            civil_criminal: "Ask about theft, assault, or property damage..."
-        };
-        document.getElementById("q").placeholder = placeholders[c];
     }
 
     async function askAi(checkId = null) {
@@ -222,7 +212,7 @@
         lastQ = question;
 
         btn.disabled = true;
-        resDiv.innerHTML = `<p style="text-align:center; font-weight:500;">⏳ Sheria AI is generating your legal analysis...</p>`;
+        resDiv.innerHTML = `<p style="text-align:center;">⚖️ Analyzing Kenyan Law...</p>`;
 
         try {
             const response = await fetch(`${API}/ask-ai`, {
@@ -232,38 +222,37 @@
             });
             const data = await response.json();
 
-            // Safety Gate: If AI fails, HIDE payment box and show error
-            if (!data || !data.summary || data.summary === "undefined" || data.summary.length < 5) {
-                resDiv.innerHTML = `
-                    <div style="text-align:center; padding:20px; background:#fff5f5; border:1px solid #feb2b2; border-radius:12px; color:#c53030;">
-                        ⚠️ <strong>Analysis failed:</strong> Sheria AI couldn't generate a clear summary. 
-                        <br><small>Please rephrase your question and try again.</small>
-                    </div>`;
-                return; 
+            // Safety Gate
+            if (!data || !data.summary || data.summary.length < 5) {
+                resDiv.innerHTML = `<div style="text-align:center; padding:20px; color:red;">⚠️ Failed to generate summary. Please try again.</div>`;
+                return;
             }
 
             if (data.status === "premium") {
                 const formatted = data.content.replace(/\n/g, '<br>');
                 resDiv.innerHTML = `
-                    <div class="credits-badge">🎟️ ${data.credits_left} deep-dives remaining</div>
-                    <div class="premium-content"><h3>📋 Full Deep-Dive Result</h3>${formatted}</div>`;
+                    <div style="background:#fbbf24; padding:5px 15px; border-radius:10px; font-weight:bold; display:inline-block; margin-bottom:10px;">
+                        🎟️ ${data.credits_left} deep-dives remaining
+                    </div>
+                    <div class="premium-content"><h3>📋 Legal Breakdown</h3>${formatted}</div>`;
                 
                 if (data.credits_left === 0) clearPaidId();
                 else if (activeId) savePaidId(activeId);
                 resDiv.scrollIntoView({ behavior: 'smooth' });
             } else {
+                // SUMMARY DISPLAY (Now full length from backend)
                 resDiv.innerHTML = `
                     <div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div>
                     <div class="paywall">
-                        <h4>🔒 Unlock Detailed Legal Sections</h4>
-                        <p>Get <strong>2 Full Legal Analysis</strong> credits for <strong>KSh 20</strong></p>
-                        <input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; max-width:280px; margin-bottom:12px; border-radius:8px; border:1px solid #ccc;"><br>
+                        <h4>🔒 Unlock Detailed Sections</h4>
+                        <p>Get <strong>2 Legal Analysis</strong> credits for <strong>KSh 20</strong></p>
+                        <input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; max-width:280px; margin-bottom:12px; border:1px solid #ccc; border-radius:8px;"><br>
                         <button class="ask-btn" style="background:var(--gold);color:black;max-width:280px;" id="payBtn" onclick="pay()">Pay via M-Pesa</button>
                         <div id="pStat" style="margin-top:12px; font-weight:600;"></div>
                     </div>`;
             }
         } catch (e) {
-            resDiv.innerHTML = "<p style='color:red;text-align:center;'>The server is busy. Please try again.</p>";
+            resDiv.innerHTML = "<p style='color:red;text-align:center;'>Error. Please try again.</p>";
         } finally { btn.disabled = false; }
     }
 
@@ -271,49 +260,33 @@
         const pInput = document.getElementById("phone").value;
         const pStat = document.getElementById("pStat");
         const payBtn = document.getElementById("payBtn");
-
         if(!pInput) return alert("Enter M-Pesa number");
-        if (paymentInterval) clearInterval(paymentInterval);
+        if (poller) clearInterval(poller);
 
         pStat.innerText = "⏳ Initializing STK Push...";
-        pStat.style.color = "black";
         payBtn.disabled = true;
 
         try {
-            const res = await fetch(`${API}/stkpush`, {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ phone: pInput })
-            });
+            const res = await fetch(`${API}/stkpush`, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ phone: pInput }) });
             const data = await res.json();
-            if (!data.checkout_id) {
-                pStat.innerText = "❌ M-Pesa failed. Try again.";
-                pStat.style.color = "red";
-                payBtn.disabled = false;
-                return;
-            }
-
-            pStat.innerText = "📩 Prompt sent! Enter PIN on your phone...";
-
-            paymentInterval = setInterval(async () => {
+            if (!data.checkout_id) { pStat.innerText = "❌ Failed."; payBtn.disabled = false; return; }
+            
+            pStat.innerText = "📩 Prompt sent! Enter PIN on phone...";
+            poller = setInterval(async () => {
                 try {
                     const check = await fetch(`${API}/check-payment/${data.checkout_id}`);
                     const r = await check.json();
                     if (r.status === "paid") {
-                        clearInterval(paymentInterval);
-                        pStat.innerText = "✅ Payment Confirmed!";
-                        pStat.style.color = "green";
+                        clearInterval(poller);
+                        pStat.innerText = "✅ Paid!";
                         savePaidId(data.checkout_id);
                         askAi(data.checkout_id);
                     }
                 } catch (e) {}
             }, 4000);
-        } catch (e) { 
-            pStat.innerText = "❌ Network error."; 
-            pStat.style.color = "red";
-            payBtn.disabled = false; 
-        }
+        } catch (e) { pStat.innerText = "❌ Network error."; payBtn.disabled = false; }
     }
 </script>
+
 </body>
 </html>
