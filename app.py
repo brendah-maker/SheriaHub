@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from groq import Groq
@@ -32,12 +33,10 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
-# --- 2. CLEANED API KEYS ---
-# .strip() removes any accidental spaces or hidden 'new line' characters from Render
+# --- 2. API KEYS ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY", "").strip()
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY", "").strip()
-
 IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
 BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
@@ -47,7 +46,7 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 def health():
     return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
 
-# --- 3. AI LOGIC ---
+# --- 3. IMPROVED AI LOGIC (No Truncation) ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     try:
@@ -69,16 +68,19 @@ def ask_ai():
 
         law_map = {
             "employment": "Employment Act 2007",
-            "land": "Land Act 2012",
-            "family": "Marriage Act",
+            "land": "Land Act 2012 & Land Registration Act",
+            "family": "Marriage Act, Children Act 2022",
             "traffic": "Traffic Act Cap 403",
             "tenant": "Rent Restriction Act",
-            "civil_criminal": "Penal Code of Kenya"
+            "civil_criminal": "Penal Code of Kenya & Civil Procedure"
         }
         
         prompt = (
-            f"Expert in {law_map.get(category)}. User: {question}\n\n"
-            "Format: SUMMARY: [1 sentence] DEEP_DIVE: [markdown]"
+            f"You are a Kenyan legal expert on {law_map.get(category)}. "
+            f"User Question: {question}\n\n"
+            "Provide your response in two distinct parts exactly like this:\n"
+            "SUMMARY: [Provide a full, clear paragraph explaining the core legal answer without cutting it off]\n"
+            "DEEP_DIVE: [Provide the detailed legal sections and citations]"
         )
 
         chat = client.chat.completions.create(
@@ -87,19 +89,31 @@ def ask_ai():
         )
         
         txt = chat.choices[0].message.content
-        summary = txt.split("DEEP_DIVE:")[0].replace("SUMMARY:", "").strip() if "DEEP_DIVE:" in txt else txt[:100]
-        deep_dive = txt.split("DEEP_DIVE:")[1].strip() if "DEEP_DIVE:" in txt else txt
+        
+        # SMART PARSING: Handle bold markers and case-sensitivity
+        # We split by 'DEEP_DIVE:' but we remove any bold stars '**' around labels
+        clean_txt = txt.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
+        
+        if "DEEP_DIVE:" in clean_txt:
+            parts = clean_txt.split("DEEP_DIVE:")
+            summary = parts[0].replace("SUMMARY:", "").strip()
+            deep_dive = parts[1].strip()
+        else:
+            # Fallback if AI missed the marker: Take first paragraph as summary
+            paragraphs = txt.split('\n\n')
+            summary = paragraphs[0].replace("SUMMARY:", "").strip()
+            deep_dive = txt
 
         return jsonify({
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
-            "summary": summary,
-            "content": deep_dive if is_paid else "Payment required."
+            "summary": summary, # This is now full-length
+            "content": deep_dive if is_paid else "Payment required for deep dive."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- 4. FIXED M-PESA STK PUSH ---
+# --- 4. PAYMENT ROUTES ---
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
@@ -107,25 +121,13 @@ def stk_push():
         phone = data.get("phone", "").strip().replace("+", "")
         if phone.startswith("0"): phone = "254" + phone[1:]
         
-        # We use the stripped key here to ensure no 'Invalid api token' error
-        payload = {
-            "public_key": INTASEND_PUBLISHABLE_KEY, 
-            "amount": 20, 
-            "phone_number": phone, 
-            "api_ref": "SheriaHub"
-        }
-        headers = {
-            "Authorization": f"Bearer {INTASEND_SECRET_KEY}", 
-            "Content-Type": "application/json"
-        }
-        
-        print(f"DEBUG: Push to {phone} on {BASE_URL}")
+        payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
+        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
         res_data = res.json()
         
         if res.status_code != 200:
-            print(f"❌ INTASEND REJECTED: {res_data}")
-            return jsonify({"error": "M-Pesa rejected", "details": res_data}), 400
+            return jsonify({"error": "Rejected", "details": res_data}), 400
 
         inv_id = res_data.get("invoice", {}).get("invoice_id")
         if inv_id:
@@ -135,19 +137,6 @@ def stk_push():
         return jsonify({"error": "No ID"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-@app.route('/api/callback', methods=['POST'])
-def callback():
-    data = request.get_json()
-    inv_id = data.get("invoice_id")
-    if inv_id and data.get("state") == "COMPLETE":
-        p = Payment.query.get(inv_id)
-        if not p: db.session.add(Payment(id=inv_id, status="paid", credits=2))
-        else:
-            p.status = "paid"
-            p.credits = 2
-        db.session.commit()
-    return jsonify({"ok": True}), 200
 
 @app.route('/check-payment/<id>')
 def check(id):
