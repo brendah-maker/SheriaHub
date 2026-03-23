@@ -1,7 +1,6 @@
 import os
 import json
 import requests
-import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from groq import Groq
@@ -46,7 +45,7 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 def health():
     return jsonify({"status": "Healthy"}), 200
 
-# --- 3. GAME & LEGAL AI LOGIC ---
+# --- 3. AI LOGIC (CONSULTATION + GAME) ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client: return jsonify({"error": "AI not initialized"}), 500
@@ -59,7 +58,7 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
-        # Credit Logic
+        # Credit Logic for main consultation
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if payment and payment.status == "paid" and payment.credits > 0:
@@ -68,15 +67,14 @@ def ask_ai():
                 credits_left = payment.credits
                 db.session.commit()
 
-        # Handle Game Mode vs Legal Consultation
+        # CATEGORY MAPPING
         if category == "game":
             system_msg = (
                 "You are the host of 'Sheria Law vs. Myth'. "
-                "If the user says 'START', provide one common Kenyan legal myth. "
-                "If the user provides an answer, tell them if they are right. "
-                "If they are wrong, give a funny, witty reaction (e.g., 'Woi! You'd be in Kamiti by now!'). "
-                "Then provide the 1-sentence legal fact. "
-                "Format: MYTH: [The Myth] TRUTH: [The legal reality] REACTION: [Funny comment]"
+                "1. If user says 'NEW GAME', present 1 popular Kenyan legal myth. "
+                "2. If user guesses, tell them if they are right. "
+                "3. If they are wrong, give a funny, witty reaction (max 2 sentences). "
+                "4. Always end with the real legal fact. Keep it short for a chat widget."
             )
         else:
             law_map = {
@@ -85,8 +83,8 @@ def ask_ai():
                 "tenant": "Tenancy Law", "civil_criminal": "Civil & Criminal Law"
             }
             system_msg = (
-                f"You are a Kenyan legal expert on {law_map.get(category)}. "
-                "Format: SUMMARY: [1-2 sentences overview] DEEP_DIVE: [Full citations and steps]"
+                f"You are a Kenyan legal expert on {law_map.get(category, 'Kenyan Law')}. "
+                "Format: SUMMARY: [1-2 sentences] DEEP_DIVE: [Full citations & steps]"
             )
 
         completion = client.chat.completions.create(
@@ -99,8 +97,8 @@ def ask_ai():
         deep_dive = ""
         
         if category == "game":
-            summary = full_text # In game mode, we send the whole reaction
-            deep_dive = "The challenge continues! Ask another or check another law."
+            summary = full_text
+            deep_dive = "Game Mode Active"
         else:
             clean_txt = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
             if "DEEP_DIVE:" in clean_txt:
@@ -140,19 +138,6 @@ def stk_push():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/callback', methods=['POST'])
-def callback():
-    data = request.get_json()
-    inv_id = data.get("invoice_id")
-    if inv_id and data.get("state") == "COMPLETE":
-        p = Payment.query.get(inv_id)
-        if not p: db.session.add(Payment(id=inv_id, status="paid", credits=2))
-        else:
-            p.status = "paid"
-            p.credits = 2
-        db.session.commit()
-    return jsonify({"ok": True}), 200
-
 @app.route('/check-payment/<id>')
 def check_payment(id):
     p = Payment.query.get(id)
@@ -162,15 +147,11 @@ def check_payment(id):
         res = requests.get(f"{BASE_URL}/payment/status/{id}/", headers=headers)
         if res.json().get("invoice", {}).get("state") == "COMPLETE":
             if not p: p = Payment(id=id, status="paid", credits=2)
-            else:
-                p.status = "paid"
-                p.credits = 2
-            db.session.add(p)
-            db.session.commit()
+            else: p.status = "paid"; p.credits = 2
+            db.session.add(p); db.session.commit()
             return jsonify({"status": "paid", "credits": 2})
     except: pass
     return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
