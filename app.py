@@ -33,7 +33,7 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
-# --- 2. API KEYS ---
+# --- 2. API KEYS & URLS ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY", "").strip()
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY", "").strip()
@@ -79,35 +79,28 @@ def ask_ai():
                 db.session.commit()
 
         law_map = {
-            "employment": "Employment Law",
-            "land": "Land & Property Law",
-            "family": "Family & Children Law",
-            "traffic": "Traffic Law",
-            "tenant": "Tenancy Law",
-            "civil_criminal": "Civil & Criminal Law"
+            "employment": "Employment Law (Employment Act 2007)",
+            "land": "Land & Property Law (Land Act 2012)",
+            "family": "Family Law (Marriage Act, Children Act 2022, Succession Act)",
+            "traffic": "Traffic Law (Traffic Act Cap 403)",
+            "tenant": "Tenancy Law (Rent Restriction Act)",
+            "civil_criminal": "Civil & Criminal Law (Penal Code of Kenya & Civil Procedure)"
         }
             
         system_msg = (
             f"You are a Kenyan legal expert on {law_map.get(category)}. "
-            "You MUST follow these rules for the response:\n"
-            "1. Start with 'SUMMARY: ' followed by a helpful 1-2 sentence overview. NEVER mention specific Act names or Section numbers here.\n"
-            "2. Then write 'DEEP_DIVE: ' followed by the full details, including Sections, Acts, Court names, and Steps."
+            "Rule: Start with 'SUMMARY: ' followed by a 1-2 sentence overview without Acts/Sections. "
+            "Then write 'DEEP_DIVE: ' followed by the citations and steps."
         )
 
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": question}
-            ]
+            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": question}]
         )
         
         full_text = completion.choices[0].message.content
-        summary = ""
-        deep_dive = ""
-        
-        # Robust Clean Split
         clean_txt = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
+        
         if "DEEP_DIVE:" in clean_txt:
             parts = clean_txt.split("DEEP_DIVE:")
             summary = parts[0].replace("SUMMARY:", "").strip()
@@ -120,12 +113,12 @@ def ask_ai():
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
             "summary": summary,
-            "content": deep_dive if is_paid else "🔒 Payment required for specific Acts, Section citations, and step-by-step court filing guides."
+            "content": deep_dive if is_paid else "🔒 Payment required for deep dive."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- 4. PAYMENT ROUTES ---
+# --- 4. PAYMENT & STATUS ROUTES ---
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
@@ -136,10 +129,8 @@ def stk_push():
         
         payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
-        
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
         res_data = res.json()
-        
         inv_id = res_data.get("invoice", {}).get("invoice_id")
         if inv_id:
             db.session.add(Payment(id=inv_id, status="pending", credits=0))
@@ -149,7 +140,6 @@ def stk_push():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# FIX: Added Callback Route back in
 @app.route('/api/callback', methods=['POST'])
 def callback():
     data = request.get_json()
