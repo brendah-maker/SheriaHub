@@ -10,7 +10,7 @@ from sqlalchemy import text
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- 1. DATABASE CONFIGURATION ---
+# --- 1. DATABASE ---
 uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
 if uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -41,11 +41,12 @@ BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
+@app.route('/')
 @app.route('/health')
 def health():
-    return jsonify({"status": "Healthy"}), 200
+    return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
 
-# --- 3. AI LOGIC (CONSULTATION + GAME) ---
+# --- 3. LEGAL QUIZ & AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client: return jsonify({"error": "AI not initialized"}), 500
@@ -54,11 +55,11 @@ def ask_ai():
         question = data.get("question", "")
         category = data.get("category", "tenant")
         checkout_id = data.get("checkout_id")
+        level = data.get("level", "Beginner") # Get user level
 
         is_paid = False
         credits_left = 0
 
-        # Credit Logic for main consultation
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if payment and payment.status == "paid" and payment.credits > 0:
@@ -67,25 +68,21 @@ def ask_ai():
                 credits_left = payment.credits
                 db.session.commit()
 
-        # CATEGORY MAPPING
         if category == "game":
             system_msg = (
-                "You are the host of 'Sheria Law vs. Myth'. "
-                "1. If user says 'NEW GAME', present 1 popular Kenyan legal myth. "
-                "2. If user guesses, tell them if they are right. "
-                "3. If they are wrong, give a funny, witty reaction (max 2 sentences). "
-                "4. Always end with the real legal fact. Keep it short for a chat widget."
+                f"You are the 'Sheria Quiz Master'. The current level is {level}. "
+                "1. If user says 'START', provide 1 legal scenario (Tenancy, Employment, or Criminal) with 3 Multiple Choice options (a, b, c). "
+                "2. If user answers, tell them if they are right. Give a short explanation of the Kenyan law. "
+                "3. If they are right, tell them they are moving towards the next level. "
+                "Keep responses short and engaging for a chat widget."
             )
         else:
             law_map = {
                 "employment": "Employment Law", "land": "Land & Property Law",
-                "family": "Family & Children Law", "traffic": "Traffic Law",
+                "family": "Family Law", "traffic": "Traffic Law",
                 "tenant": "Tenancy Law", "civil_criminal": "Civil & Criminal Law"
             }
-            system_msg = (
-                f"You are a Kenyan legal expert on {law_map.get(category, 'Kenyan Law')}. "
-                "Format: SUMMARY: [1-2 sentences] DEEP_DIVE: [Full citations & steps]"
-            )
+            system_msg = f"Expert in {law_map.get(category, 'Kenyan Law')}. Format: SUMMARY: [text] DEEP_DIVE: [text]"
 
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
@@ -98,7 +95,6 @@ def ask_ai():
         
         if category == "game":
             summary = full_text
-            deep_dive = "Game Mode Active"
         else:
             clean_txt = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
             if "DEEP_DIVE:" in clean_txt:
@@ -154,4 +150,5 @@ def check_payment(id):
     return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
