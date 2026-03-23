@@ -33,7 +33,7 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
-# --- 2. API KEYS & URLS ---
+# --- 2. API KEYS ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY", "").strip()
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY", "").strip()
@@ -42,12 +42,11 @@ BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-@app.route('/')
 @app.route('/health')
 def health():
-    return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
+    return jsonify({"status": "Healthy"}), 200
 
-# --- 3. THE "GATED" AI LOGIC ---
+# --- 3. GAME & LEGAL AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client: return jsonify({"error": "AI not initialized"}), 500
@@ -60,38 +59,35 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
+        # Credit Logic
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
-            if not payment:
-                try:
-                    headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
-                    res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
-                    if res.json().get("invoice", {}).get("state") == "COMPLETE":
-                        payment = Payment(id=checkout_id, status="paid", credits=2)
-                        db.session.add(payment)
-                        db.session.commit()
-                except: pass
-
             if payment and payment.status == "paid" and payment.credits > 0:
                 is_paid = True
                 payment.credits -= 1
                 credits_left = payment.credits
                 db.session.commit()
 
-        law_map = {
-            "employment": "Employment Law (Employment Act 2007)",
-            "land": "Land & Property Law (Land Act 2012)",
-            "family": "Family Law (Marriage Act, Children Act 2022, Succession Act)",
-            "traffic": "Traffic Law (Traffic Act Cap 403)",
-            "tenant": "Tenancy Law (Rent Restriction Act)",
-            "civil_criminal": "Civil & Criminal Law (Penal Code of Kenya & Civil Procedure)"
-        }
-            
-        system_msg = (
-            f"You are a Kenyan legal expert on {law_map.get(category)}. "
-            "Rule: Start with 'SUMMARY: ' followed by a 1-2 sentence overview without Acts/Sections. "
-            "Then write 'DEEP_DIVE: ' followed by the citations and steps."
-        )
+        # Handle Game Mode vs Legal Consultation
+        if category == "game":
+            system_msg = (
+                "You are the host of 'Sheria Law vs. Myth'. "
+                "If the user says 'START', provide one common Kenyan legal myth. "
+                "If the user provides an answer, tell them if they are right. "
+                "If they are wrong, give a funny, witty reaction (e.g., 'Woi! You'd be in Kamiti by now!'). "
+                "Then provide the 1-sentence legal fact. "
+                "Format: MYTH: [The Myth] TRUTH: [The legal reality] REACTION: [Funny comment]"
+            )
+        else:
+            law_map = {
+                "employment": "Employment Law", "land": "Land & Property Law",
+                "family": "Family & Children Law", "traffic": "Traffic Law",
+                "tenant": "Tenancy Law", "civil_criminal": "Civil & Criminal Law"
+            }
+            system_msg = (
+                f"You are a Kenyan legal expert on {law_map.get(category)}. "
+                "Format: SUMMARY: [1-2 sentences overview] DEEP_DIVE: [Full citations and steps]"
+            )
 
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
@@ -99,34 +95,38 @@ def ask_ai():
         )
         
         full_text = completion.choices[0].message.content
-        clean_txt = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
+        summary = ""
+        deep_dive = ""
         
-        if "DEEP_DIVE:" in clean_txt:
-            parts = clean_txt.split("DEEP_DIVE:")
-            summary = parts[0].replace("SUMMARY:", "").strip()
-            deep_dive = parts[1].strip()
+        if category == "game":
+            summary = full_text # In game mode, we send the whole reaction
+            deep_dive = "The challenge continues! Ask another or check another law."
         else:
-            summary = full_text.split('.')[0] + "."
-            deep_dive = full_text
+            clean_txt = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
+            if "DEEP_DIVE:" in clean_txt:
+                parts = clean_txt.split("DEEP_DIVE:")
+                summary = parts[0].replace("SUMMARY:", "").strip()
+                deep_dive = parts[1].strip()
+            else:
+                summary = full_text.split('.')[0] + "."
+                deep_dive = full_text
 
         return jsonify({
-            "status": "premium" if is_paid else "free",
+            "status": "premium" if (is_paid or category == "game") else "free",
             "credits_left": credits_left,
             "summary": summary,
-            "content": deep_dive if is_paid else "🔒 Payment required for deep dive."
+            "content": deep_dive
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- 4. PAYMENT & STATUS ROUTES ---
+# --- 4. PAYMENT ROUTES ---
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
         data = request.get_json()
         phone = data.get("phone", "").strip().replace("+", "")
         if phone.startswith("0"): phone = "254" + phone[1:]
-        elif (phone.startswith("7") or phone.startswith("1")) and len(phone) == 9: phone = "254" + phone
-        
         payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
@@ -136,7 +136,7 @@ def stk_push():
             db.session.add(Payment(id=inv_id, status="pending", credits=0))
             db.session.commit()
             return jsonify({"checkout_id": inv_id})
-        return jsonify({"error": "Rejected"}), 400
+        return jsonify({"error": "Failed"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
