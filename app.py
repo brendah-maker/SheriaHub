@@ -45,11 +45,10 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 def health():
     return jsonify({"status": "Healthy"}), 200
 
-# --- 3. REWRITTEN ASK-AI (FOOLPROOF) ---
+# --- 3. ASK-AI (UNIFIED FOR CONSULTATION & GAME) ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    if not client:
-        return jsonify({"error": "AI not initialized"}), 500
+    if not client: return jsonify({"error": "AI not ready"}), 500
     
     try:
         data = request.get_json()
@@ -61,7 +60,7 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
-        # Credit Management
+        # Credit Logic
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if payment and payment.status == "paid" and payment.credits > 0:
@@ -70,25 +69,20 @@ def ask_ai():
                 credits_left = payment.credits
                 db.session.commit()
 
-        # System Prompt Logic
+        # System Contexts
         if category == "game":
             system_msg = (
                 f"You are the 'Sheria Quiz Master'. Level: {level}. "
-                "1. If user says 'START', generate 1 Multiple Choice Question (MCQ) about Kenyan Law. "
-                "2. Provide 3 clear options: a, b, c. "
-                "3. If user answers (e.g., 'My answer is A'), tell them if they are CORRECT or WRONG. "
-                "4. Give a 1-sentence legal explanation and tell them if they advance. Be fun and witty."
+                "1. If user says 'START', give 1 Kenyan legal scenario with 3 MCQ options (a, b, c). "
+                "2. If user answers, tell them if they are CORRECT or WRONG with a funny reaction. "
+                "3. Explain the law in 1 sentence. Be witty and use emojis."
             )
         else:
             law_map = {
                 "employment": "Employment Law", "land": "Land Law", "family": "Family Law",
                 "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil/Criminal Law"
             }
-            context = law_map.get(category, "Kenyan Law")
-            system_msg = (
-                f"You are a Kenyan legal expert on {context}. "
-                "Format: SUMMARY: [1-2 sentences] DEEP_DIVE: [Full citations and steps]"
-            )
+            system_msg = f"Kenyan Legal Expert on {law_map.get(category, 'Law')}. Format: SUMMARY: [text] DEEP_DIVE: [text]"
 
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
@@ -97,7 +91,7 @@ def ask_ai():
         
         ai_resp = completion.choices[0].message.content
 
-        # Handle splitting for non-game requests
+        # Parsing
         if category != "game":
             clean_txt = ai_resp.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
             if "DEEP_DIVE:" in clean_txt:
@@ -109,9 +103,8 @@ def ask_ai():
                 content = ai_resp
         else:
             summary = ai_resp
-            content = "Quiz Mode Active"
+            content = "Quiz Active"
 
-        # ALWAYS return a response
         return jsonify({
             "status": "premium" if (is_paid or category == "game") else "free",
             "credits_left": credits_left,
@@ -120,8 +113,7 @@ def ask_ai():
         })
 
     except Exception as e:
-        print(f"🔥 AI Crash: {str(e)}")
-        return jsonify({"error": "Internal Server Error", "details": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 # --- 4. PAYMENT & STATUS ---
 @app.route('/stkpush', methods=['POST'])
@@ -143,25 +135,11 @@ def stk_push():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/callback', methods=['POST'])
-def callback():
-    try:
-        data = request.get_json()
-        inv_id = data.get("invoice_id")
-        if inv_id and data.get("state") == "COMPLETE":
-            p = Payment.query.get(inv_id)
-            if not p: db.session.add(Payment(id=inv_id, status="paid", credits=2))
-            else: p.status = "paid"; p.credits = 2
-            db.session.commit()
-        return jsonify({"ok": True}), 200
-    except:
-        return jsonify({"ok": False}), 500
-
 @app.route('/check-payment/<id>')
 def check_payment(id):
+    p = Payment.query.get(id)
+    if p and p.status == "paid": return jsonify({"status": "paid", "credits": p.credits})
     try:
-        p = Payment.query.get(id)
-        if p and p.status == "paid": return jsonify({"status": "paid", "credits": p.credits})
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
         res = requests.get(f"{BASE_URL}/payment/status/{id}/", headers=headers)
         if res.json().get("invoice", {}).get("state") == "COMPLETE":
