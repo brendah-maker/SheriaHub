@@ -1,48 +1,48 @@
-# ... (Keep your imports and Database/IntaSend setup from the previous message)
+import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
+import google.generativeai as genai
+from groq import Groq  # The module that was missing
+from intasend import APIService
 
-# Helper to call Gemini
-def call_gemini(prompt):
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
-    return response.text
+app = Flask(__name__)
+CORS(app)
+
+# Database
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL").replace("postgres://", "postgresql://", 1)
+db = SQLAlchemy(app)
+
+# Initialize Clients
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY")) # Ensure this ENV is set on Render
+
+# The "Kanjo" Game Prompt
+KANJO_SYSTEM_PROMPT = """
+You are 'Kanjo-GPT', an expert on Kenyan City Council (Kanjo) Bylaws. 
+The user is in a simulation where they are confronted by Kanjo officers in Nairobi.
+1. Present a scenario (e.g., parking, hawking, littering).
+2. Give 3 options (A, B, C) on how to respond legally.
+3. If they choose correctly, explain the specific Bylaw.
+"""
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     data = request.json
     user_q = data.get('question')
-    category = data.get('category') # 'tenant', 'game', etc.
-    checkout_id = data.get('checkout_id')
+    category = data.get('category')
 
-    # --- CASE 1: THE QUIZ GAME ---
-    if category == "game":
-        prompt = f"""
-        You are 'Sheria Quiz Master'. Generate a multiple-choice question about Kenyan {user_q} law.
-        Format:
-        Question: [The Question]
-        A) [Option]
-        B) [Option]
-        C) [Option]
-        Correct Answer: [Letter]
-        Explanation: [Brief why]
-        """
-        response = call_gemini(prompt)
-        return jsonify({"summary": response})
+    # --- KANJO GAME LOGIC (Using Groq for speed) ---
+    if category == "kanjo":
+        completion = groq_client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": KANJO_SYSTEM_PROMPT},
+                {"role": "user", "content": user_q}
+            ]
+        )
+        return jsonify({"summary": completion.choices[0].message.content})
 
-    # --- CASE 2: LEGAL CONSULTATION ---
-    # Check if payment is valid for premium content
-    is_paid = False
-    if checkout_id:
-        payment = Payment.query.filter_by(checkout_id=checkout_id, status='paid').first()
-        if payment:
-            is_paid = True
-
-    if is_paid:
-        prompt = f"Provide a detailed legal analysis for a Kenyan citizen regarding: {user_q}. Cite specific Kenyan Acts or Sections."
-        full_text = call_gemini(prompt)
-        return jsonify({"status": "premium", "content": full_text})
-    else:
-        prompt = f"Provide a 2-sentence brief summary for: {user_q} in the context of Kenyan Law. Do not give detailed advice."
-        summary = call_gemini(prompt)
-        return jsonify({"status": "free", "summary": summary})
-
-# ... (Keep your /stkpush-game and /check-payment routes)
+    # --- REGULAR LEGAL ADVICE (Using Gemini) ---
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    # ... (Keep your existing Gemini logic here)
