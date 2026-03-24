@@ -1,16 +1,22 @@
 import os
 import json
 import requests
+import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from groq import Groq
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 
 app = Flask(__name__)
-CORS(app) # Vital for your Vercel-to-Render connection
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- DB & KEYS ---
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db").replace("postgres://", "postgresql://", 1)
+# --- 1. DATABASE CONFIGURATION ---
+uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
+if uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -22,59 +28,98 @@ class Payment(db.Model):
 with app.app_context():
     db.create_all()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY", "").strip())
+# --- 2. API KEYS ---
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY", "").strip()
+INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY", "").strip()
+IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
+BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
+client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+
+# --- NEW: DRAMA COURT ENGINE ---
+@app.route('/generate-drama', methods=['GET'])
+def generate_drama():
+    prompt = (
+        "Generate a 'Who is the Drama' legal scenario for Kenya. "
+        "It should be a dispute between two people (e.g. Mama Njuguna vs Baba Otis) "
+        "involving money, property, or relationships. "
+        "Return ONLY a JSON object: {"
+        "'scenario': 'Short 2-sentence story', "
+        "'person_a': 'Name of Person A', 'person_b': 'Name of Person B', "
+        "'judgment': 'A 3-sentence legal explanation citing Kenyan law on who is right'}"
+    )
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# --- PRE-EXISTING ROUTES ---
 @app.route('/')
-def home(): return jsonify({"status": "SheriaHub API is Live"}), 200
+def health(): return jsonify({"status": "Healthy"}), 200
 
-# --- JUA MECHI ENGINE ---
-@app.route('/generate-jua-mechi', methods=['GET'])
-def generate_jua_mechi():
-    cat = request.args.get("category", "tenant")
-    prompt = (
-        f"Create a 'Jua Mechi' game for Kenyan {cat} law. Return ONLY a JSON object: "
-        "{'contract_html': 'Short text with 3 errors', 'red_flags': ['exact phrase 1', 'phrase 2', 'phrase 3'], "
-        "'explanations': ['reason 1', 'reason 2', 'reason 3']}"
-    )
-    try:
-        completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant", messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-        return completion.choices[0].message.content
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# --- FACT OR FALLACY ENGINE ---
-@app.route('/get-fact-fallacy', methods=['GET'])
-def get_fact_fallacy():
-    cat = request.args.get("category", "traffic")
-    prompt = (
-        f"Generate a 'Fact or Fallacy' for Kenyan {cat} law. Return ONLY JSON: "
-        "{'statement': 'The claim', 'is_fact': true/false, 'explanation': 'The legal truth'}"
-    )
-    try:
-        completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant", messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-        return completion.choices[0].message.content
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# --- CONSULTATION ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
+    if not client: return jsonify({"error": "AI not initialized"}), 500
     data = request.get_json()
+    question = data.get("question", "")
+    category = data.get("category", "tenant")
+    checkout_id = data.get("checkout_id")
+
+    is_paid = False
+    credits_left = 0
+
+    if checkout_id and checkout_id != "undefined":
+        payment = Payment.query.get(checkout_id)
+        if payment and payment.status == "paid" and payment.credits > 0:
+            is_paid = True
+            payment.credits -= 1
+            credits_left = payment.credits
+            db.session.commit()
+
+    system_msg = f"You are a Kenyan legal expert. Start with 'SUMMARY: ' then 'DEEP_DIVE: ' for {category}."
+    completion = client.chat.completions.create(
+        model="llama-3.1-8b-instant", 
+        messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": question}]
+    )
+    full_text = completion.choices[0].message.content
+    summary = full_text.split("DEEP_DIVE:")[0].replace("SUMMARY:", "").strip()
+    deep_dive = full_text.split("DEEP_DIVE:")[1].strip() if "DEEP_DIVE:" in full_text else full_text
+
+    return jsonify({
+        "status": "premium" if is_paid else "free",
+        "credits_left": credits_left,
+        "summary": summary,
+        "content": deep_dive if is_paid else "🔒 Payment required for specific Acts."
+    })
+
+@app.route('/stkpush', methods=['POST'])
+def stk_push():
     try:
-        res = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "system", "content": "You are a Kenyan legal expert. Summarize the answer simply."}, 
-                      {"role": "user", "content": data.get("question")}]
-        )
-        return jsonify({"summary": res.choices[0].message.content})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        data = request.get_json()
+        phone = data.get("phone", "").strip().replace("+", "")
+        if phone.startswith("0"): phone = "254" + phone[1:]
+        payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
+        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
+        res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
+        inv_id = res.json().get("invoice", {}).get("invoice_id")
+        if inv_id:
+            db.session.add(Payment(id=inv_id, status="pending", credits=0))
+            db.session.commit()
+            return jsonify({"checkout_id": inv_id})
+        return jsonify({"error": "Rejected"}), 400
+    except Exception as e: return jsonify({"error": str(e)}), 500
+
+@app.route('/check-payment/<id>')
+def check_payment(id):
+    p = Payment.query.get(id)
+    if p and p.status == "paid": return jsonify({"status": "paid"})
+    return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
