@@ -8,32 +8,32 @@
     <style>
         :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f5f7fa; --white: #ffffff; --text: #2d3748; }
         * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; min-height: 100vh; line-height: 1.6; color: var(--text); }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; min-height: 100vh; color: var(--text); }
         h1, h2, h3, .navbar-brand { font-family: 'Poppins', sans-serif; }
         .navbar { background: var(--navy); color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--gold); position: sticky; top: 0; z-index: 1000; }
         .navbar-brand { font-weight: bold; font-size: 1.4rem; }
         .hero { background: var(--navy); color: white; text-align: center; padding: 40px 20px 80px; }
         .hero h1 { margin: 0; font-size: 2.2rem; }
         .category-selector { display: flex; justify-content: center; gap: 10px; margin: -40px auto 30px; padding: 0 15px; flex-wrap: wrap; z-index: 10; position: relative; max-width: 1000px; }
-        .cat-btn { padding: 12px 20px; border-radius: 30px; border: 2px solid var(--gold); background: var(--white); cursor: pointer; font-weight: 600; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-size: 0.9rem; }
+        .cat-btn { padding: 10px 20px; border-radius: 30px; border: 2px solid var(--gold); background: var(--white); cursor: pointer; font-weight: 600; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-size: 0.9rem; }
         .cat-btn.active { background: var(--gold); color: black; transform: translateY(-2px); }
         .chat-container { width: 95%; max-width: 700px; margin: 20px auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
-        textarea { width: 100%; height: 130px; padding: 18px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 16px; margin-bottom: 15px; resize: none; outline: none; font-family: inherit; }
+        textarea { width: 100%; height: 120px; padding: 15px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 16px; margin-bottom: 15px; resize: none; outline: none; font-family: inherit; }
         .ask-btn { width: 100%; padding: 16px; background: var(--navy); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 1.1rem; transition: 0.3s; }
-        .ask-btn:disabled { background: #cbd5e0; }
         .legal-card { padding: 25px; border-left: 6px solid var(--navy); background: #f8fafc; margin-top: 25px; border-radius: 12px; text-align: left; }
         .paywall { background: #fffbeb; border: 2px dashed var(--gold); padding: 35px; border-radius: 15px; margin-top: 25px; text-align: center; }
         .premium-content { background: #f0fff4; border: 2px solid #38a169; padding: 30px; border-radius: 15px; margin-top: 25px; line-height: 1.8; white-space: pre-wrap; }
 
         /* WIDGET STYLING */
-        .widget-bubble { position: fixed; bottom: 30px; right: 30px; background: var(--gold); width: 65px; height: 65px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2rem; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 2000; }
+        .widget-bubble { position: fixed; bottom: 30px; right: 30px; background: var(--gold); width: 65px; height: 65px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2rem; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 2000; transition: 0.3s; }
+        .widget-bubble:hover { transform: scale(1.1); }
         .widget-window { position: fixed; bottom: 110px; right: 30px; width: 360px; height: 500px; background: white; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.15); display: none; flex-direction: column; z-index: 2001; border: 1px solid #e2e8f0; overflow: hidden; animation: slideUp 0.3s ease; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .widget-header { background: var(--navy); color: white; padding: 15px; display: flex; justify-content: space-between; font-weight: 700; }
         .widget-body { flex: 1; padding: 20px; overflow-y: auto; background: #fcfcfc; font-size: 0.95rem; }
-        .quiz-btn { width: 100%; padding: 12px; margin-top: 8px; border-radius: 10px; border: 1px solid #ddd; background: white; cursor: pointer; text-align: left; font-weight: 600; transition: 0.2s; }
-        .quiz-btn:hover { border-color: var(--gold); background: #fffcf0; }
-        .lvl-tag { background: #e2e8f0; padding: 3px 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; margin-bottom: 10px; display: inline-block; }
+        .quiz-option { width: 100%; padding: 12px; margin-top: 10px; border-radius: 10px; border: 1px solid #ddd; background: white; cursor: pointer; text-align: left; font-weight: 600; transition: 0.2s; }
+        .quiz-option:hover { border-color: var(--gold); background: #fffcf0; }
+        .lvl-badge { background: #e2e8f0; padding: 3px 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; margin-bottom: 10px; display: inline-block; }
         .footer { background: var(--navy); color: white; text-align: center; padding: 40px; margin-top: auto; }
     </style>
 </head>
@@ -46,8 +46,8 @@
 
     <div class="main-content">
         <header class="hero">
-            <h1>Legal Rights, Simplified.</h1>
-            <p>Access Law Analysis or play the <strong>Legal Quiz Master</strong>.</p>
+            <h1>Legal Intelligence, Simplified.</h1>
+            <p>Access Law Analysis or play the <strong>Sheria Quiz Master</strong>.</p>
         </header>
 
         <div class="category-selector">
@@ -65,7 +65,7 @@
         </main>
     </div>
 
-    <!-- QUIZ WIDGET -->
+    <!-- QUIZ WIDGET (THE GAME) -->
     <div class="widget-bubble" onclick="toggleWidget()">🎮</div>
     <div id="gameWidget" class="widget-window">
         <div class="widget-header">
@@ -73,10 +73,10 @@
             <span style="cursor:pointer;" onclick="toggleWidget()">✕</span>
         </div>
         <div id="gameBody" class="widget-body">
-            <div id="lvlDisp" class="lvl-tag">Level: Beginner</div>
-            <p id="gameText">Test your Kenyan legal street smarts!</p>
+            <div id="lvlDisplay" class="lvl-badge">Level: Beginner</div>
+            <p id="gameText">Test your Kenyan legal street smarts! Are you ready?</p>
             <div id="gameControls">
-                <button class="ask-btn" style="padding:12px;" onclick="gameCycle('START')">Start Game 🚀</button>
+                <button class="ask-btn" style="padding:12px;" onclick="gameCycle('START')">Start Beginner Quiz 🚀</button>
             </div>
         </div>
     </div>
@@ -87,9 +87,8 @@
 
 <script>
     const API = "https://sheriahub.onrender.com"; 
-    let cat = "tenant";
     let currentLvl = "Beginner";
-    let lastQText = ""; 
+    let lastQuestionText = ""; 
 
     const savePaidId = (id) => localStorage.setItem('sheria_payment_id', id);
     const getPaidId = () => localStorage.getItem('sheria_payment_id');
@@ -100,13 +99,13 @@
     }
 
     function setCat(c) {
-        cat = c;
         document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`btn-${c}`).classList.add('active');
-        const p = { tenant: "Ask about rent...", employment: "Ask about dismissal...", family: "Ask about maintenance...", traffic: "Ask about traffic fines...", civil_criminal: "Ask about theft..." };
+        const p = { tenant: "Ask about rent...", employment: "Ask about dismissal...", family: "Ask about custody...", traffic: "Ask about traffic fines...", civil_criminal: "Ask about theft..." };
         document.getElementById("q").placeholder = p[c];
     }
 
+    // MAIN AI CONSULTATION
     async function askAi() {
         const q = document.getElementById("q").value;
         const resDiv = document.getElementById("res");
@@ -117,59 +116,52 @@
         resDiv.innerHTML = "<p style='text-align:center;'>⚖️ Analyzing...</p>";
 
         try {
-            const res = await fetch(`${API}/ask-ai`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ question: q, category: cat, checkout_id: getPaidId() }) });
+            const res = await fetch(`${API}/ask-ai`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ question: q, category: "tenant", checkout_id: getPaidId() }) });
             const data = await res.json();
             if (data.status === "premium") {
                 resDiv.innerHTML = `<div class="premium-content"><h3>📋 Result</h3>${data.content.replace(/\n/g, '<br>')}</div>`;
             } else {
-                resDiv.innerHTML = `<div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div><div class="paywall"><h4>🔒 Unlock Full Details</h4><p>KSh 20 for 2 Credits</p><button class="ask-btn" onclick="pay()">Pay via M-Pesa</button></div>`;
+                resDiv.innerHTML = `<div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div><div class="paywall"><h4>🔒 Unlock Full Details</h4><p>KSh 20 for 2 Credits</p><button class="ask-btn" onclick="alert('Proceeding to M-Pesa...')">Pay via M-Pesa</button></div>`;
             }
-        } catch (e) { resDiv.innerHTML = "Something went wrong. Try again."; }
+        } catch (e) { resDiv.innerHTML = "Error. Please try again."; }
         finally { btn.disabled = false; }
     }
 
+    // GAME INTERACTION LOGIC
     async function gameCycle(userInput) {
         const text = document.getElementById("gameText");
         const controls = document.getElementById("gameControls");
-        const lvl = document.getElementById("lvlDisp");
+        const lvlTag = document.getElementById("lvlDisplay");
 
         text.innerHTML = "⏳ Thinking...";
         controls.innerHTML = "";
 
-        const finalQ = (userInput === 'START') ? "START" : `My answer is ${userInput}. Context: ${lastQText}`;
+        // Construct context: Send both the answer and the previous question so AI knows what to grade
+        const payloadQ = (userInput === 'START') ? "START" : `I choose ${userInput}. The question was: ${lastQuestionText}`;
 
         try {
-            const res = await fetch(`${API}/ask-ai`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ question: finalQ, category: "game", level: currentLvl }) });
+            const res = await fetch(`${API}/ask-ai`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ question: payloadQ, category: "game", level: currentLvl })
+            });
             const data = await res.json();
             
             text.innerHTML = data.summary.replace(/\n/g, '<br>');
 
             if (userInput === 'START' || userInput.includes('Next')) {
-                lastQText = data.summary;
+                // Showing a new question
+                lastQuestionText = data.summary;
                 controls.innerHTML = `
-                    <button class="quiz-btn" onclick="gameCycle('Option A')">A</button>
-                    <button class="quiz-btn" onclick="gameCycle('Option B')">B</button>
-                    <button class="quiz-btn" onclick="gameCycle('Option C')">C</button>
+                    <button class="quiz-option" onclick="gameCycle('Option A')">A</button>
+                    <button class="quiz-option" onclick="gameCycle('Option B')">B</button>
+                    <button class="quiz-option" onclick="gameCycle('Option C')">C</button>
                 `;
             } else {
-                controls.innerHTML = `<button class="ask-btn" onclick="gameCycle('START')">Next Question ⏭️</button>`;
-                // Logic to update level could be based on score in a later update
+                // Showing a result (Correct/Wrong)
+                controls.innerHTML = `<button class="ask-btn" style="margin-top:10px;" onclick="gameCycle('START')">Next Challenge ⏭️</button>`;
             }
-        } catch (e) { text.innerHTML = "Connection Error."; }
-    }
-
-    async function pay() {
-        const phone = prompt("Enter phone (254...):");
-        if(!phone) return;
-        try {
-            const res = await fetch(`${API}/stkpush`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ phone }) });
-            const { checkout_id } = await res.json();
-            const p = setInterval(async () => {
-                const c = await fetch(`${API}/check-payment/${checkout_id}`);
-                const r = await c.json();
-                if(r.status === "paid") { clearInterval(p); savePaidId(checkout_id); askAi(); }
-            }, 4000);
-        } catch (e) { alert("Error"); }
+        } catch (e) { text.innerHTML = "Server connection lost. Try again."; }
     }
 </script>
 </body>
