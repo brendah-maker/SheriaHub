@@ -1,8 +1,7 @@
-Flask
-Flask-Cors
-Flask-SQLAlchemy
-psycopg2-binary
-requests
+flask
+flask-cors
+flask-sqlalchemy
 google-generativeai
 intasend-python
 gunicorn
+groq
