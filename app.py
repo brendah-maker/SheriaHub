@@ -39,22 +39,26 @@ INTASEND_PUB = os.getenv("INTASEND_PUBLISHABLE_KEY")
 IS_SANDBOX = os.getenv("IS_SANDBOX", "True").lower() == "true"
 INTASEND_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
-# --- 3. THE FUNNY KANJO PROMPT ---
+# --- 3. CONCISE PROMPTS ---
 KANJO_PROMPT = """
-You are 'Kanjo-GPT', a witty Nairobi City Council officer. 
-Your goal is to test the user's 'Street Smart' legal knowledge.
-1. Create a SHORT (max 2 sentences) funny scenario (e.g., being accused of 'staring at a flower' or 'carrying a laptop too professionally').
-2. Use relatable Kenyan slang like 'Msee', 'Kushikwa', 'Luku', 'Kitu kidogo'.
-3. Provide 3 punchy options (A, B, C).
-4. If they choose an option, give a funny response. If they are wrong, explain the real Nairobi Bylaw with sarcasm. 
-Keep the total response under 100 words.
+You are 'Kanjo-GPT'. Be EXTREMELY BRIEF.
+1. Scenario: Max 15 words. Funny & Kenyan.
+2. Options A, B, C: Max 5 words each.
+3. Feedback: Max 20 words. If wrong, cite the bylaw sarcastically.
+Use Sheng like 'Wewe ni msee wa luku' or 'Utashikwa'.
+"""
+
+LAW_PROMPT_TEMPLATE = """
+You are a Kenyan lawyer. 
+1. SUMMARY: Strictly ONE sentence (max 20 words). No section numbers here.
+2. DEEP_DIVE: Short bullet points only. Cite Acts.
 """
 
 # --- 4. ROUTES ---
 
 @app.route('/')
 def home():
-    return "SheriaHub API is Live and Witty! ⚖️", 200
+    return "SheriaHub: Concise & Fast! ⚖️", 200
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
@@ -74,15 +78,13 @@ def ask_ai():
             credits_left = payment.credits
             db.session.commit()
 
-    if category == "kanjo":
-        sys_msg = KANJO_PROMPT
-    else:
-        sys_msg = f"You are a serious Kenyan legal expert on {category}. 1. SUMMARY: (1-2 sentences). 2. DEEP_DIVE: (Full acts/sections)."
+    sys_msg = KANJO_PROMPT if category == "kanjo" else LAW_PROMPT_TEMPLATE.replace("{cat}", category)
 
     try:
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant",
-            messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": question}]
+            messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": question}],
+            max_tokens=150 # Hard limit on response size
         )
         full_text = completion.choices[0].message.content
 
@@ -101,7 +103,7 @@ def ask_ai():
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
             "summary": summary,
-            "content": deep_dive if is_paid else "🔒 Pay KSh 20 to unlock Section citations."
+            "content": deep_dive if is_paid else "🔒 Pay KSh 20 for bullet-point Acts."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -111,13 +113,10 @@ def stk_push():
     data = request.get_json()
     phone = data.get("phone", "").strip()
     if phone.startswith("0"): phone = "254" + phone[1:]
-    
     payload = {"public_key": INTASEND_PUB, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
     headers = {"Authorization": f"Bearer {INTASEND_SECRET}", "Content-Type": "application/json"}
-    
     res = requests.post(f"{INTASEND_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
     inv_id = res.json().get("invoice", {}).get("invoice_id")
-    
     if inv_id:
         db.session.add(Payment(id=inv_id, status="pending", credits=0))
         db.session.commit()
@@ -128,8 +127,7 @@ def stk_push():
 def check_payment(id):
     p = Payment.query.get(id)
     if p and p.status == "paid": return jsonify({"status": "paid", "credits": p.credits})
-    headers = {"Authorization": f"Bearer {INTASEND_SECRET}"}
-    res = requests.get(f"{INTASEND_URL}/payment/status/{id}/", headers=headers)
+    res = requests.get(f"{INTASEND_URL}/payment/status/{id}/", headers={"Authorization": f"Bearer {INTASEND_SECRET}"})
     if res.json().get("invoice", {}).get("state") == "COMPLETE":
         if not p: p = Payment(id=id, status="paid", credits=2)
         else: p.status = "paid"; p.credits = 2
