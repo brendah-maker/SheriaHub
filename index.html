@@ -2,136 +2,109 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SheriaHub | Fast AI Law</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SheriaHub | Nairobi Survival</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f4f7f6; --red: #ff4757; }
-        body { font-family: 'Poppins', sans-serif; background: var(--bg); margin: 0; }
-        .nav { background: var(--navy); color: white; padding: 12px 5%; display: flex; justify-content: space-between; border-bottom: 3px solid var(--gold); }
-        .hero { background: var(--navy); color: white; text-align: center; padding: 30px 20px; }
-        .tabs { display: flex; justify-content: center; gap: 5px; margin: -20px 0 20px; flex-wrap: wrap; }
-        .tab { padding: 8px 15px; border-radius: 20px; border: 2px solid var(--gold); background: white; cursor: pointer; font-weight: bold; font-size: 12px; }
-        .tab.active { background: var(--gold); color: white; }
-        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        textarea { width: 100%; height: 70px; padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; box-sizing: border-box; outline: none; }
-        .btn { width: 100%; padding: 12px; background: var(--navy); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .result { margin-top: 15px; font-size: 14px; line-height: 1.4; }
-        .kanjo-bubble { position: fixed; bottom: 20px; right: 20px; background: var(--red); width: 55px; height: 55px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 25px; cursor: pointer; z-index: 100; border: 2px solid white; }
-        .kanjo-window { position: fixed; bottom: 85px; right: 20px; width: 280px; height: 400px; background: white; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.2); display: none; flex-direction: column; z-index: 101; border: 1px solid #ddd; }
-        .kanjo-header { background: var(--red); color: white; padding: 10px 15px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
-        .kanjo-body { padding: 15px; flex: 1; overflow-y: auto; font-size: 13px; }
-        .quiz-opt { width: 100%; padding: 10px; margin-top: 8px; border: 1px solid #eee; border-radius: 8px; background: white; cursor: pointer; text-align: left; font-size: 13px; }
-        .quiz-opt:hover { background: #fff5f5; border-color: var(--red); }
-        .loader { border: 2px solid #f3f3f3; border-top: 2px solid var(--gold); border-radius: 50%; width: 15px; height: 15px; animation: spin 1s linear infinite; display: inline-block; }
+        :root { --navy: #0a1f44; --gold: #f39c12; --red: #ff4757; --green: #2ed573; }
+        body { font-family: 'Poppins', sans-serif; background: #111; color: white; margin: 0; overflow: hidden; }
+        
+        /* Game Stats Bar */
+        .stats { display: flex; justify-content: space-around; padding: 15px; background: rgba(0,0,0,0.5); font-size: 14px; }
+        .stat-item { display: flex; align-items: center; gap: 5px; }
+
+        /* The Game Card */
+        .game-container { height: 80vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
+        .card { background: white; color: #333; width: 100%; max-width: 320px; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
+        
+        .scene-text { font-size: 18px; margin-bottom: 30px; line-height: 1.4; min-height: 60px; }
+        
+        .choice-btn { width: 100%; padding: 15px; margin-bottom: 12px; border: none; border-radius: 15px; font-family: inherit; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; background: #f0f2f5; }
+        .choice-btn:active { transform: scale(0.95); }
+        .choice-btn.a { border-left: 6px solid var(--gold); }
+        .choice-btn.b { border-left: 6px solid var(--navy); }
+
+        /* Outcome Overlay */
+        #outcome { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; padding: 30px; box-sizing: border-box; text-align: center; z-index: 200; }
+        
+        .loader { border: 4px solid #333; border-top: 4px solid var(--gold); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div class="nav">
-        <div style="font-weight:bold;">⚖️ SheriaHub</div>
-        <div id="creditsBadge" style="background:var(--gold); padding: 2px 8px; border-radius: 10px; font-size: 10px;">Credits: 0</div>
+    <div class="stats">
+        <div class="stat-item">💰 <span id="money">2000</span></div>
+        <div class="stat-item">❤️ <span id="life">3</span></div>
+        <div class="stat-item">⚖️ SheriaHub</div>
     </div>
 
-    <div class="hero">
-        <h3 style="margin:0;">Instant Law & Kanjo</h3>
+    <div class="game-container">
+        <div class="card" id="gameCard">
+            <div id="loader" class="loader"></div>
+            <div id="scene" class="scene-text">Walking through CBD with a laptop bag...</div>
+            <div id="controls" style="display:none;">
+                <button class="choice-btn a" id="btnA" onclick="handleChoice('A')">Option A</button>
+                <button class="choice-btn b" id="btnB" onclick="handleChoice('B')">Option B</button>
+            </div>
+        </div>
     </div>
 
-    <div class="tabs">
-        <div class="tab active" onclick="setCat('tenant', this)">🏠 Rent</div>
-        <div class="tab" onclick="setCat('traffic', this)">🚗 Road</div>
-        <div class="tab" onclick="setCat('employment', this)">💼 Job</div>
-        <div class="tab" onclick="setCat('family', this)">👨‍👩‍👧 Family</div>
-    </div>
-
-    <div class="container">
-        <textarea id="q" placeholder="What happened?"></textarea>
-        <button class="btn" onclick="askAi()">Ask Advisor</button>
-        <div id="res" class="result"></div>
-    </div>
-
-    <div class="kanjo-bubble" onclick="toggleKanjo()">👮</div>
-    <div id="kanjoWin" class="kanjo-window">
-        <div class="kanjo-header"><span>🚨 Survival</span> <span onclick="toggleKanjo()" style="cursor:pointer">×</span></div>
-        <div class="kanjo-body" id="kanjoBody">
-            <p id="kanjoText">Kanjo is staring at your car...</p>
-            <div id="kanjoCtrl"><button class="btn" style="background:var(--red)" onclick="gameCycle('START')">Play</button></div>
+    <div id="outcome" onclick="nextStep()">
+        <div>
+            <h2 id="outcomeTitle">Outcome</h2>
+            <p id="outcomeText"></p>
+            <p style="font-size: 12px; color: #888;">Tap to continue...</p>
         </div>
     </div>
 
     <script>
-        const API = "https://sheriahub.onrender.com"; 
-        let currentCat = "tenant";
+        const API = "https://sheriahub.onrender.com"; // UPDATE THIS
+        let gameState = { money: 2000, life: 3, currentData: null };
 
-        function setCat(c, el) {
-            currentCat = c;
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            el.classList.add('active');
-        }
+        async function nextStep() {
+            document.getElementById('outcome').style.display = 'none';
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('scene').innerText = "";
+            document.getElementById('controls').style.display = 'none';
 
-        function toggleKanjo() {
-            const w = document.getElementById("kanjoWin");
-            w.style.display = (w.style.display === "flex") ? "none" : "flex";
-        }
+            try {
+                const res = await fetch(`${API}/game-step`, { method: "POST" });
+                const data = await res.json();
+                gameState.currentData = data;
 
-        async function askAi() {
-            const q = document.getElementById("q").value;
-            const resDiv = document.getElementById("res");
-            if(!q) return;
-            resDiv.innerHTML = "<div class='loader'></div> Summarizing...";
-            const response = await fetch(`${API}/ask-ai`, {
-                method: "POST",
-                headers: {"Content-Type":"application/json"},
-                body: JSON.stringify({ question: q, category: currentCat, checkout_id: localStorage.getItem("sheria_id") })
-            });
-            const data = await response.json();
-            if(data.status === "premium") {
-                resDiv.innerHTML = `<div style="background:#e6fffa; padding:10px; border-radius:8px;">${data.content.replace(/\n/g, '<br>')}</div>`;
-                document.getElementById("creditsBadge").innerText = `Credits: ${data.credits_left}`;
-            } else {
-                resDiv.innerHTML = `<b>Summary:</b> ${data.summary}<br><div style="margin-top:10px; text-align:center;"><button class="btn" style="width:auto; padding:5px 15px; font-size:12px;" onclick="pay()">Unlock Acts (KSh 20)</button></div>`;
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('scene').innerText = data.scene;
+                document.getElementById('btnA').innerText = data.A;
+                document.getElementById('btnB').innerText = data.B;
+                document.getElementById('controls').style.display = 'block';
+            } catch (e) {
+                document.getElementById('scene').innerText = "Connection lost. Tap to try again.";
             }
         }
 
-        async function pay() {
-            const phone = prompt("Enter M-Pesa Number:");
-            if(!phone) return;
-            const res = await fetch(`${API}/stkpush`, {
-                method: "POST",
-                headers: {"Content-Type":"application/json"},
-                body: JSON.stringify({ phone })
-            });
-            const data = await res.json();
-            if(data.checkout_id) { alert("Check phone!"); poll(data.checkout_id); }
+        function handleChoice(choice) {
+            const result = choice === 'A' ? gameState.currentData.resultA : gameState.currentData.resultB;
+            
+            // Update Stats
+            gameState.money += result.money;
+            gameState.life += result.life;
+
+            // Update UI
+            document.getElementById('money').innerText = gameState.money;
+            document.getElementById('life').innerText = gameState.life;
+            document.getElementById('outcomeText').innerText = result.text;
+            document.getElementById('outcomeTitle').innerText = (result.money < 0 || result.life < 0) ? "Ouch! 🤕" : "Nice! 😎";
+            document.getElementById('outcome').style.display = 'flex';
+
+            if (gameState.life <= 0) {
+                alert("Game Over! You were deported to the village.");
+                location.reload();
+            }
         }
 
-        function poll(id) {
-            const timer = setInterval(async () => {
-                const res = await fetch(`${API}/check-payment/${id}`);
-                const data = await res.json();
-                if(data.status === "paid") { clearInterval(timer); localStorage.setItem("sheria_id", id); askAi(); }
-            }, 3000);
-        }
-
-        async function gameCycle(input) {
-            const text = document.getElementById("kanjoText");
-            const ctrl = document.getElementById("kanjoCtrl");
-            text.innerHTML = "<div class='loader'></div>...";
-            const res = await fetch(`${API}/ask-ai`, {
-                method: "POST",
-                headers: {"Content-Type":"application/json"},
-                body: JSON.stringify({ question: input, category: "kanjo" })
-            });
-            const data = await res.json();
-            text.innerHTML = data.summary.replace(/\n/g, "<br>");
-            ctrl.innerHTML = `
-                <button class="quiz-opt" onclick="gameCycle('A')">A</button>
-                <button class="quiz-opt" onclick="gameCycle('B')">B</button>
-                <button class="quiz-opt" onclick="gameCycle('C')">C</button>
-                <button class="btn" style="background:#777; margin-top:10px; font-size:11px;" onclick="gameCycle('START')">Restart</button>
-            `;
-        }
+        // Start game
+        nextStep();
     </script>
 </body>
 </html>
