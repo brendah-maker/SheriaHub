@@ -1,99 +1,48 @@
-import os
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
-import google.generativeai as genai
-from intasend import APIService
+# ... (Keep your imports and Database/IntaSend setup from the previous message)
 
-app = Flask(__name__)
-CORS(app)
+# Helper to call Gemini
+def call_gemini(prompt):
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
 
-# 1. FIXED: Correct SQLAlchemy Config Key
-# The key is 'SQLALCHEMY_DATABASE_URI', not 'DATABASE_DATABASE_URI'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-
-# Payment Model
-class Payment(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    checkout_id = db.Column(db.String(100), unique=True, nullable=False)
-    status = db.Column(db.String(20), default='pending')
-    amount = db.Column(db.Integer)
-    phone = db.Column(db.String(20))
-
-# Initialize External Services
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-
-# Use 'test=True' for development, 'test=False' for live
-service = APIService(
-    token=os.environ.get("INTASEND_API_KEY"),
-    publishable_key=os.environ.get("INTASEND_PUBLISHABLE_KEY"),
-    test_mode=False 
-)
-
-@app.route('/stkpush-game', methods=['POST'])
-def stkpush_game():
+@app.route('/ask-ai', methods=['POST'])
+def ask_ai():
     data = request.json
-    phone = data.get('phone')
-    
-    try:
-        # 2. FIXED: IntaSend SDK syntax
-        # Using service.collect.mpesa_stk_push (no brackets on collect)
-        response = service.collect.mpesa_stk_push(
-            phone_number=phone,
-            amount=20,
-            narrative="SheriaHub Unlimited"
-        )
-        
-        # IntaSend returns 'invoice' object containing the 'id'
-        checkout_id = response.get('id') or response.get('invoice', {}).get('invoice_id')
-        
-        if not checkout_id:
-            return jsonify({"error": "Failed to generate checkout ID"}), 400
+    user_q = data.get('question')
+    category = data.get('category') # 'tenant', 'game', etc.
+    checkout_id = data.get('checkout_id')
 
-        new_payment = Payment(checkout_id=checkout_id, amount=20, phone=phone)
-        db.session.add(new_payment)
-        db.session.commit()
-        
-        return jsonify({"checkout_id": checkout_id}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+    # --- CASE 1: THE QUIZ GAME ---
+    if category == "game":
+        prompt = f"""
+        You are 'Sheria Quiz Master'. Generate a multiple-choice question about Kenyan {user_q} law.
+        Format:
+        Question: [The Question]
+        A) [Option]
+        B) [Option]
+        C) [Option]
+        Correct Answer: [Letter]
+        Explanation: [Brief why]
+        """
+        response = call_gemini(prompt)
+        return jsonify({"summary": response})
 
-@app.route('/check-payment/<checkout_id>', methods=['GET'])
-def check_payment(checkout_id):
-    try:
-        # 3. FIXED: IntaSend status check syntax
-        status_resp = service.collect.status(invoice_id=checkout_id)
-        
-        # Dig into the invoice object for the state
-        invoice = status_resp.get('invoice', {})
-        state = invoice.get('state', 'PENDING').upper()
-        
-        payment = Payment.query.filter_by(checkout_id=checkout_id).first()
-        
-        if not payment:
-            return jsonify({"status": "not_found"}), 404
+    # --- CASE 2: LEGAL CONSULTATION ---
+    # Check if payment is valid for premium content
+    is_paid = False
+    if checkout_id:
+        payment = Payment.query.filter_by(checkout_id=checkout_id, status='paid').first()
+        if payment:
+            is_paid = True
 
-        if state == 'COMPLETE':
-            payment.status = 'paid'
-            db.session.commit()
-            return jsonify({"status": "paid"}), 200
-        
-        # If the API says it's failed, update DB accordingly
-        if state in ['FAILED', 'CANCELLED']:
-            payment.status = 'failed'
-            db.session.commit()
-            return jsonify({"status": "failed"}), 200
-            
-        return jsonify({"status": "pending"}), 200
-    except Exception as e:
-        print(f"Error checking status: {e}")
-        return jsonify({"status": "pending"}), 200
+    if is_paid:
+        prompt = f"Provide a detailed legal analysis for a Kenyan citizen regarding: {user_q}. Cite specific Kenyan Acts or Sections."
+        full_text = call_gemini(prompt)
+        return jsonify({"status": "premium", "content": full_text})
+    else:
+        prompt = f"Provide a 2-sentence brief summary for: {user_q} in the context of Kenyan Law. Do not give detailed advice."
+        summary = call_gemini(prompt)
+        return jsonify({"status": "free", "summary": summary})
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all() 
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+# ... (Keep your /stkpush-game and /check-payment routes)
