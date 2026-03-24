@@ -3,125 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SheriaHub | Instant AI Legal Intelligence</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <title>SheriaHub | AI Legal Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Poppins:wght@700&display=swap" rel="stylesheet">
     <style>
-        :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f5f7fa; --white: #ffffff; --text: #2d3748; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; line-height: 1.6; }
-        .navbar { background: var(--navy); color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--gold); }
-        .hero { background: var(--navy); color: white; text-align: center; padding: 60px 20px 80px; }
-        .chat-container { width: 95%; max-width: 700px; margin: -40px auto 20px; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
-        textarea { width: 100%; height: 120px; padding: 15px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 16px; margin-bottom: 10px; resize: none; }
-        .ask-btn { width: 100%; padding: 16px; background: var(--navy); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 1rem; transition: 0.3s; }
-        .ask-btn:hover { opacity: 0.9; }
+        :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding-bottom: 50px; }
+        .nav { background: var(--navy); color: white; padding: 15px 5%; border-bottom: 4px solid var(--gold); display: flex; justify-content: space-between; }
+        .hero { background: var(--navy); color: white; text-align: center; padding: 50px 20px 80px; }
+        .container { max-width: 700px; margin: -50px auto 20px; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        textarea { width: 100%; height: 100px; padding: 15px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 16px; margin-bottom: 10px; }
+        .btn { width: 100%; padding: 15px; background: var(--navy); color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; }
         
-        /* Kanjo Game Style */
-        .game-section { max-width: 700px; margin: 30px auto; padding: 0 15px; }
-        .game-card { background: white; padding: 25px; border-radius: 20px; border-top: 5px solid var(--gold); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        .game-title { color: var(--navy); font-family: 'Poppins'; margin-top: 0; display: flex; align-items: center; gap: 10px; }
-        .choice-btn { width: 100%; text-align: left; padding: 12px; margin-top: 10px; border: 1px solid #cbd5e0; border-radius: 8px; background: #f8fafc; cursor: pointer; transition: 0.2s; }
-        .choice-btn:hover { background: #edf2f7; border-color: var(--navy); }
-        .result-box { display: none; margin-top: 20px; padding: 15px; border-radius: 10px; border-left: 5px solid var(--gold); background: #f0f7ff; }
-
-        .footer { background: var(--navy); color: white; text-align: center; padding: 40px; margin-top: 50px; }
+        /* Kanjo Game UI */
+        .game-card { border-top: 6px solid var(--gold); margin-top: 30px; padding: 25px; background: #fff; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .choice-btn { width: 100%; text-align: left; padding: 14px; margin-top: 10px; border: 1px solid #cbd5e0; border-radius: 10px; background: #fdfdfd; cursor: pointer; font-weight: 500; }
+        .choice-btn:hover { border-color: var(--gold); background: #fffdf2; }
+        .res-box { display: none; margin-top: 20px; padding: 20px; border-radius: 12px; background: #f0f7ff; border-left: 5px solid var(--gold); }
     </style>
 </head>
 <body>
 
-<nav class="navbar">
-    <div style="font-weight:700; font-size:1.4rem; font-family:'Poppins';">⚖️ SheriaHub</div>
-    <div style="background:rgba(255,255,255,0.1); padding:5px 10px; border-radius:5px; font-size:0.8rem;">KENYA 🇰🇪</div>
-</nav>
+<nav class="nav"><div style="font-weight:700;">⚖️ SheriaHub</div><div>NAIROBI 🇰🇪</div></nav>
 
 <header class="hero">
-    <h1 style="margin:0; font-family:'Poppins'; font-size:2rem;">Your Legal Rights, Simplified.</h1>
-    <p>Instant legal intelligence for Citizens & Tenants using Kenyan Statutes.</p>
+    <h1 style="margin:0; font-family:'Poppins';">Sheria AI & Street Smarts</h1>
 </header>
 
-<main class="chat-container">
-    <textarea id="q" placeholder="Ask about rent, deposits, evictions, or workplace rights..."></textarea>
-    <button class="ask-btn" id="askBtn" onclick="askAi()">Get AI Consultation</button>
-    <div id="res"></div>
-</main>
+<div class="container">
+    <textarea id="q" placeholder="What legal issue are you facing today?"></textarea>
+    <button class="btn" onclick="askAi()">Get AI Consultation</button>
+    <div id="ai-res"></div>
 
-<section class="game-section">
     <div class="game-card">
-        <h3 class="game-title">👮 Kanjo Chronicles: CBD Survival</h3>
-        <p id="kanjo-text">Loading your encounter in Nairobi CBD...</p>
+        <h2 style="margin:0; font-family:'Poppins'; color:var(--navy);">🏃 Kanjo Chronicles</h2>
+        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 20px;">Can you survive a walk through the CBD without "opening your wallet"?</p>
         
-        <div id="kanjo-controls">
-            <button id="opt-a" class="choice-btn" onclick="playKanjo('a')"></button>
-            <button id="opt-b" class="choice-btn" onclick="playKanjo('b')"></button>
-            <button id="opt-c" class="choice-btn" onclick="playKanjo('c')"></button>
+        <p id="k-scenario" style="font-weight: 600; font-style: italic;">Loading your morning in Nairobi...</p>
+        
+        <div id="k-options">
+            <button id="opt-a" class="choice-btn" onclick="decide('a')"></button>
+            <button id="opt-b" class="choice-btn" onclick="decide('b')"></button>
+            <button id="opt-c" class="choice-btn" onclick="decide('c')"></button>
         </div>
 
-        <div id="kanjo-result" class="result-box">
-            <h4 style="margin:0;">The Outcome:</h4>
-            <p id="outcome-text"></p>
-            <button class="ask-btn" style="padding:10px; margin-top:10px;" onclick="loadKanjo()">New Encounter ➔</button>
+        <div id="k-res" class="res-box">
+            <h4 style="margin:0;">The Result:</h4>
+            <p id="k-outcome"></p>
+            <button class="btn" style="padding:10px; margin-top:10px;" onclick="loadGame()">Try to survive again</button>
         </div>
     </div>
-</section>
-
-<footer class="footer">
-    <p>© 2026 SheriaHub Kenya | Built for Justice</p>
-</footer>
+</div>
 
 <script>
     const API = "https://sheriahub.onrender.com";
-    let currentKanjo = null;
+    let state = null;
 
-    // --- AI CONSULTATION ---
     async function askAi() {
         const q = document.getElementById("q").value;
-        const resDiv = document.getElementById("res");
-        if(!q) return;
-        resDiv.innerHTML = "<p style='text-align:center;'>⏳ Analyzing Kenyan Law...</p>";
-        try {
-            const r = await fetch(`${API}/ask-ai`, {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ question: q })
-            });
-            const data = await r.json();
-            resDiv.innerHTML = `<div style="background:#f8fafc; padding:20px; border-radius:12px; margin-top:20px; border-left:5px solid var(--navy);">
-                <strong>Summary:</strong><br>${data.summary}<br><br><i>${data.content}</i>
-            </div>`;
-        } catch (e) { resDiv.innerHTML = "Error connecting to AI."; }
+        const res = document.getElementById("ai-res");
+        res.innerHTML = "⏳ Consulting the statutes...";
+        const r = await fetch(`${API}/ask-ai`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({question:q}) });
+        const d = await r.json();
+        res.innerHTML = `<div style="padding:15px; background:#f1f5f9; border-radius:10px; margin-top:15px;">${d.summary}<br><br><i>${d.content}</i></div>`;
     }
 
-    // --- KANJO GAME LOGIC ---
-    async function loadKanjo() {
-        const txt = document.getElementById("kanjo-text");
-        const controls = document.getElementById("kanjo-controls");
-        const resBox = document.getElementById("kanjo-result");
-        
-        resBox.style.display = "none";
-        controls.style.display = "block";
-        txt.innerText = "⏳ Looking for trouble in town...";
-
-        try {
-            const r = await fetch(`${API}/generate-kanjo`);
-            currentKanjo = await r.json();
-            txt.innerText = currentKanjo.scenario;
-            document.getElementById("opt-a").innerText = "A: " + currentKanjo.choice_a;
-            document.getElementById("opt-b").innerText = "B: " + currentKanjo.choice_b;
-            document.getElementById("opt-c").innerText = "C: " + currentKanjo.choice_c;
-        } catch (e) { txt.innerText = "The officers are on lunch break. Try again later."; }
+    async function loadGame() {
+        document.getElementById("k-res").style.display = "none";
+        document.getElementById("k-options").style.display = "block";
+        document.getElementById("k-scenario").innerText = "⏳ Spotted by an officer...";
+        const r = await fetch(`${API}/generate-kanjo`);
+        state = await r.json();
+        document.getElementById("k-scenario").innerText = state.scenario;
+        ['a','b','c'].forEach(l => document.getElementById(`opt-${l}`).innerText = state[`choice_${l}`]);
     }
 
-    function playKanjo(choice) {
-        document.getElementById("kanjo-controls").style.display = "none";
-        const resBox = document.getElementById("kanjo-result");
-        const outText = document.getElementById("outcome-text");
-        
-        resBox.style.display = "block";
-        outText.innerText = currentKanjo[`outcome_${choice}`];
-        resBox.style.borderLeftColor = (choice.toUpperCase() === currentKanjo.correct_choice) ? "#2ecc71" : "#e74c3c";
+    function decide(l) {
+        document.getElementById("k-options").style.display = "none";
+        document.getElementById("k-res").style.display = "block";
+        document.getElementById("k-outcome").innerText = state[`outcome_${l}`];
+        document.getElementById("k-res").style.borderLeftColor = (l==='c' || l==='C') ? "#2ecc71" : "#e74c3c";
     }
 
-    window.onload = loadKanjo;
+    window.onload = loadGame;
 </script>
 </body>
 </html>
