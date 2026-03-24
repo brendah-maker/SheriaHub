@@ -9,7 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- DATABASE CONFIG ---
+# --- DATABASE ---
 uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
 if uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -35,15 +35,15 @@ BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# --- KANJO GAME ENGINE ---
+# --- UPDATED KANJO ENGINE (Chaos Edition) ---
 @app.route('/generate-kanjo', methods=['GET'])
 def generate_kanjo():
     prompt = (
-        "Generate a 'Kanjo Chronicles' survival scenario in Nairobi CBD. "
-        "The user is faced with a city council officer. Provide 3 options: "
-        "A (Compliant/Bribe-prone), B (Aggressive), C (Legally correct). "
-        "Return ONLY a JSON object: {"
-        "'scenario': '...', 'choice_a': '...', 'choice_b': '...', 'choice_c': '...', "
+        "Generate a funny but realistic 'Kanjo Chronicles' scenario in Nairobi. "
+        "Scenarios should vary: a hawker running with oranges, a pedestrian crossing at the wrong spot, "
+        "or a motorist being harrassed. Make the Kanjo dialogue 'street-smart'. "
+        "Include 3 options: A (Try to bribe/negotiate), B (Run/Argue), C (Know your rights/Demand ID). "
+        "Return ONLY JSON: {'scenario': '...', 'choice_a': '...', 'choice_b': '...', 'choice_c': '...', "
         "'outcome_a': '...', 'outcome_b': '...', 'outcome_c': '...', 'correct_choice': 'C'}"
     )
     try:
@@ -60,36 +60,24 @@ def generate_kanjo():
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     data = request.get_json()
-    question = data.get("question", "")
-    category = data.get("category", "tenant")
-    checkout_id = data.get("checkout_id")
-
-    is_paid, credits_left = False, 0
-    if checkout_id and checkout_id != "undefined":
-        p = Payment.query.get(checkout_id)
+    q, ck_id = data.get("question"), data.get("checkout_id")
+    is_paid, credits = False, 0
+    if ck_id and ck_id != "undefined":
+        p = Payment.query.get(ck_id)
         if p and p.status == "paid" and p.credits > 0:
-            is_paid = True
-            p.credits -= 1
-            credits_left = p.credits
+            is_paid, p.credits = True, p.credits - 1
+            credits = p.credits
             db.session.commit()
 
-    sys_msg = f"You are a Kenyan legal expert on {category} law. Start with 'SUMMARY: ' then 'DEEP_DIVE: '."
-    completion = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": question}]
-    )
-    full_text = completion.choices[0].message.content
-    summary = full_text.split("DEEP_DIVE:")[0].replace("SUMMARY:", "").strip()
-    content = full_text.split("DEEP_DIVE:")[1].strip() if "DEEP_DIVE:" in full_text else full_text
+    sys_msg = "You are a Kenyan legal expert. Start with 'SUMMARY: ' then 'DEEP_DIVE: '."
+    res = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": q}])
+    txt = res.choices[0].message.content
+    sum_part = txt.split("DEEP_DIVE:")[0].replace("SUMMARY:", "").strip()
+    deep_part = txt.split("DEEP_DIVE:")[1].strip() if "DEEP_DIVE:" in txt else txt
+    
+    return jsonify({"status": "premium" if is_paid else "free", "credits_left": credits, "summary": sum_part, "content": deep_part if is_paid else "🔒 Pay KSh 20 to unlock Section citations."})
 
-    return jsonify({
-        "status": "premium" if is_paid else "free",
-        "credits_left": credits_left,
-        "summary": summary,
-        "content": content if is_paid else "🔒 Pay KSh 20 to unlock Section citations and full legal steps."
-    })
-
-# --- PAYMENT ROUTES ---
+# --- PAYMENTS ---
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     data = request.get_json()
@@ -105,7 +93,7 @@ def stk_push():
     return jsonify({"error": "Failed"}), 400
 
 @app.route('/check-payment/<id>')
-def check_payment(id):
+def check_p(id):
     p = Payment.query.get(id)
     if p and p.status == "paid": return jsonify({"status": "paid"})
     res = requests.get(f"{BASE_URL}/payment/status/{id}/", headers={"Authorization": f"Bearer {INTASEND_SECRET_KEY}"})
