@@ -5,3 +5,4 @@ google-generativeai
 intasend-python
 gunicorn
 groq
+psycopg2-binary
