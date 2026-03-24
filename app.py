@@ -10,9 +10,8 @@ app = Flask(__name__)
 CORS(app)
 
 # --- 1. DATABASE CONFIG ---
-# Fixes 'postgres://' vs 'postgresql://' for Render/SQLAlchemy
 uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
-if uri.startswith("postgres://"):
+if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
@@ -24,7 +23,6 @@ class Payment(db.Model):
     status = db.Column(db.String(20), default="pending")
     credits = db.Column(db.Integer, default=0)
 
-# Create tables and handle migrations
 with app.app_context():
     db.create_all()
     try:
@@ -34,20 +32,29 @@ with app.app_context():
         db.session.commit()
 
 # --- 2. API CLIENTS ---
-# Spelling fixed: groq
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# IntaSend Config
 INTASEND_SECRET = os.getenv("INTASEND_SECRET_KEY")
 INTASEND_PUB = os.getenv("INTASEND_PUBLISHABLE_KEY")
 IS_SANDBOX = os.getenv("IS_SANDBOX", "True").lower() == "true"
 INTASEND_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
-# --- 3. ROUTES ---
+# --- 3. THE FUNNY KANJO PROMPT ---
+KANJO_PROMPT = """
+You are 'Kanjo-GPT', a witty Nairobi City Council officer. 
+Your goal is to test the user's 'Street Smart' legal knowledge.
+1. Create a SHORT (max 2 sentences) funny scenario (e.g., being accused of 'staring at a flower' or 'carrying a laptop too professionally').
+2. Use relatable Kenyan slang like 'Msee', 'Kushikwa', 'Luku', 'Kitu kidogo'.
+3. Provide 3 punchy options (A, B, C).
+4. If they choose an option, give a funny response. If they are wrong, explain the real Nairobi Bylaw with sarcasm. 
+Keep the total response under 100 words.
+"""
+
+# --- 4. ROUTES ---
 
 @app.route('/')
 def home():
-    return "SheriaHub API is Live! ⚖️", 200
+    return "SheriaHub API is Live and Witty! ⚖️", 200
 
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
@@ -59,7 +66,6 @@ def ask_ai():
     is_paid = False
     credits_left = 0
 
-    # Credit Check
     if checkout_id and checkout_id != "null":
         payment = Payment.query.get(checkout_id)
         if payment and payment.status == "paid" and payment.credits > 0:
@@ -68,23 +74,18 @@ def ask_ai():
             credits_left = payment.credits
             db.session.commit()
 
-    # AI Prompting Logic
     if category == "kanjo":
-        system_msg = "You are 'Kanjo-GPT'. Create a Nairobi street survival scenario with options A, B, and C. If they pick an option, explain the Nairobi City Council Bylaw. Be funny and use Kenyan street slang."
+        sys_msg = KANJO_PROMPT
     else:
-        system_msg = f"You are a Kenyan legal expert on {category}. 1. Start with 'SUMMARY: ' (1-2 sentences). 2. Then 'DEEP_DIVE: ' (Full legal acts and sections)."
+        sys_msg = f"You are a serious Kenyan legal expert on {category}. 1. SUMMARY: (1-2 sentences). 2. DEEP_DIVE: (Full acts/sections)."
 
     try:
         completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant", # Stable Llama 3.1 model
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": question}
-            ]
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": question}]
         )
         full_text = completion.choices[0].message.content
 
-        # Gating Logic
         if category == "kanjo":
             return jsonify({"status": "premium", "summary": full_text, "content": ""})
 
@@ -100,7 +101,7 @@ def ask_ai():
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
             "summary": summary,
-            "content": deep_dive if is_paid else "🔒 Pay KSh 20 to unlock Section citations and detailed legal steps."
+            "content": deep_dive if is_paid else "🔒 Pay KSh 20 to unlock Section citations."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -121,13 +122,12 @@ def stk_push():
         db.session.add(Payment(id=inv_id, status="pending", credits=0))
         db.session.commit()
         return jsonify({"checkout_id": inv_id})
-    return jsonify({"error": "STK Push Failed"}), 400
+    return jsonify({"error": "Failed"}), 400
 
 @app.route('/check-payment/<id>')
 def check_payment(id):
     p = Payment.query.get(id)
     if p and p.status == "paid": return jsonify({"status": "paid", "credits": p.credits})
-    
     headers = {"Authorization": f"Bearer {INTASEND_SECRET}"}
     res = requests.get(f"{INTASEND_URL}/payment/status/{id}/", headers=headers)
     if res.json().get("invoice", {}).get("state") == "COMPLETE":
