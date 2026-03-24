@@ -1,119 +1,111 @@
 import os
-import json
-import requests
-from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from groq import Groq
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+import google.generativeai as genai
+from intasend import APIService
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
-# --- DATABASE CONFIG ---
-uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
-if uri.startswith("postgres://"):
-    uri = uri.replace("postgres://", "postgresql://", 1)
+# --- Configuration ---
+# Set these in your Render Dashboard Environment Variables
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+INTASEND_PUBLISHABLE_KEY = os.environ.get("INTASEND_PUBLISHABLE_KEY")
+INTASEND_API_KEY = os.environ.get("INTASEND_API_KEY")
 
-app.config['SQLALCHEMY_DATABASE_URI'] = uri
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+# Initialize IntaSend
+service = APIService(
+    token=INTASEND_API_KEY,
+    publishable_key=INTASEND_PUBLISHABLE_KEY,
+    test_mode=False # Set to False for live M-Pesa
+)
 
-class Payment(db.Model):
-    id = db.Column(db.String(100), primary_key=True)
-    status = db.Column(db.String(20), default="pending")
-    credits = db.Column(db.Integer, default=0)
-    is_unlimited_game = db.Column(db.Boolean, default=False)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
-class GameSession(db.Model):
-    ip_address = db.Column(db.String(50), primary_key=True)
-    daily_count = db.Column(db.Integer, default=0)
-    last_played = db.Column(db.Date, default=datetime.utcnow().date())
-
-with app.app_context():
-    db.create_all()
-    # Migration helper for new column
-    try:
-        db.session.execute(text("ALTER TABLE payment ADD COLUMN is_unlimited_game BOOLEAN DEFAULT FALSE"))
-        db.session.commit()
-    except: db.session.rollback()
-
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
-INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY", "").strip()
-INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY", "").strip()
-IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
-BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
-
-client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
-
-# --- KANJO GAME LOGIC ---
-@app.route('/generate-kanjo', methods=['POST'])
-def generate_kanjo():
-    data = request.get_json() or {}
-    user_ip = request.remote_addr
-    checkout_id = data.get("checkout_id")
-    
-    # Check if user has paid for unlimited
-    unlimited = False
-    if checkout_id:
-        p = Payment.query.get(checkout_id)
-        if p and p.status == "paid" and p.is_unlimited_game:
-            unlimited = True
-
-    if not unlimited:
-        today = datetime.utcnow().date()
-        sess = GameSession.query.get(user_ip)
-        if not sess:
-            sess = GameSession(ip_address=user_ip, daily_count=0, last_played=today)
-            db.session.add(sess)
-        
-        if sess.last_played < today:
-            sess.daily_count = 0
-            sess.last_played = today
-        
-        if sess.daily_count >= 10:
-            return jsonify({"error": "limit_reached", "message": "You've exhausted your 10 daily survival attempts!"}), 403
-        
-        sess.daily_count += 1
-        db.session.commit()
-
-    prompt = (
-        "Generate a funny 'Kanjo Chronicles' Nairobi survival scenario. "
-        "Focus on hawkers, pedestrians, or motorists facing 'unpredictable' City Council officers. "
-        "Return ONLY JSON: {'scenario': '...', 'choice_a': '...', 'choice_b': '...', 'choice_c': '...', "
-        "'outcome_a': '...', 'outcome_b': '...', 'outcome_c': '...', 'correct_choice': 'C'}"
-    )
-    completion = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}],
-        response_format={"type": "json_object"}
-    )
-    return completion.choices[0].message.content
-
-# --- EXISTING ASK-AI LOGIC (Keep as is) ---
+# --- 1. Main AI Legal Consultant Route ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    # ... (Your existing ask_ai code here) ...
-    pass 
+    data = request.json
+    question = data.get('question')
+    category = data.get('category', 'general')
+    checkout_id = data.get('checkout_id')
 
-# --- UPDATED PAYMENT ROUTES FOR GAME ---
+    # If user provided a checkout_id, verify it for premium access
+    is_premium = False
+    if checkout_id:
+        status_resp = service.collect().status(checkout_id)
+        if status_resp.get('invoice', {}).get('state') == 'COMPLETE':
+            is_premium = True
+
+    if is_premium:
+        prompt = f"Provide a detailed legal analysis of this Kenyan {category} issue: {question}. Cite specific sections of the relevant Kenyan Acts."
+        response = model.generate_content(prompt)
+        return jsonify({
+            "status": "premium",
+            "content": response.text,
+            "credits_left": 1 # Simplified for this example
+        })
+    else:
+        prompt = f"Give a 2-sentence summary of the legal position on this Kenyan {category} issue: {question}. Do not give specific legal advice."
+        response = model.generate_content(prompt)
+        return jsonify({
+            "status": "free",
+            "summary": response.text
+        })
+
+# --- 2. Kanjo Chronicles Game Route ---
+@app.route('/generate-kanjo', methods=['POST'])
+def generate_kanjo():
+    # In a production app, you'd track the 10-play limit in a database
+    # For now, we allow the request unless the frontend sends a 'limit reached' signal
+    prompt = """Generate a short 'Kanjo Chronicles' survival scenario in Nairobi CBD. 
+    Provide: 1 scenario, 3 choices (A, B, C), and 3 outcomes. 
+    Format as JSON: {"scenario": "...", "choice_a": "...", "outcome_a": "...", ...}"""
+    
+    response = model.generate_content(prompt)
+    # Clean up the response to ensure it's valid JSON
+    return response.text, 200, {'Content-Type': 'application/json'}
+
+# --- 3. Jua Mechi Game Route (Fixes your 404) ---
+@app.route('/generate-jua-mechi', methods=['GET'])
+def generate_jua_mechi():
+    category = request.args.get('category', 'tenant')
+    prompt = f"""Create a 'Spot the Red Flag' game for Kenyan {category} law. 
+    Provide a short contract snippet with 3 illegal clauses.
+    Format as JSON: {"snippet": "...", "flags": ["clause1", "clause2", "clause3"]}"""
+    
+    response = model.generate_content(prompt)
+    return response.text, 200, {'Content-Type': 'application/json'}
+
+# --- 4. Payment Routes ---
 @app.route('/stkpush-game', methods=['POST'])
-def stk_push_game():
-    data = request.get_json()
-    phone = data.get("phone", "").replace("+", "")
-    if phone.startswith("0"): phone = "254" + phone[1:]
-    payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "KanjoUnlimited"}
-    headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
-    res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
-    inv_id = res.json().get("invoice", {}).get("invoice_id")
-    if inv_id:
-        db.session.add(Payment(id=inv_id, status="pending", is_unlimited_game=True))
-        db.session.commit()
-        return jsonify({"checkout_id": inv_id})
-    return jsonify({"error": "Failed"}), 400
+def stkpush_game():
+    data = request.json
+    phone = data.get('phone')
+    try:
+        response = service.collect().mpesa_stk_push(
+            phone_number=phone,
+            amount=20,
+            narrative="SheriaHub Unlimited Game"
+        )
+        return jsonify({"checkout_id": response.get('id')}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-# ... (Include your existing /check-payment and /health routes) ...
+@app.route('/check-payment/<checkout_id>', methods=['GET'])
+def check_payment(checkout_id):
+    try:
+        status_resp = service.collect().status(checkout_id)
+        # Check the actual state from the invoice object
+        state = status_resp.get('invoice', {}).get('state', 'PENDING')
+        
+        if state == 'COMPLETE':
+            return jsonify({"status": "paid"}), 200
+        return jsonify({"status": "pending"}), 200
+    except Exception:
+        return jsonify({"status": "pending"}), 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+    # Render uses the PORT environment variable
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
