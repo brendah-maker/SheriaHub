@@ -3,120 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SheriaHub | Instant AI Legal Intelligence</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <title>SheriaHub | AI Legal Intelligence</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f5f7fa; --white: #ffffff; --text: #2d3748; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; line-height: 1.6; }
-        .navbar { background: var(--navy); color: white; padding: 15px 5%; display: flex; justify-content: space-between; border-bottom: 4px solid var(--gold); }
-        .hero { background: var(--navy); color: white; text-align: center; padding: 60px 20px; }
-        .chat-container { width: 95%; max-width: 700px; margin: -40px auto 20px; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
-        textarea { width: 100%; height: 100px; padding: 15px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 16px; margin-bottom: 10px; }
-        .ask-btn { width: 100%; padding: 16px; background: var(--navy); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; }
-        
-        /* Game Styles */
-        .game-section { max-width: 700px; margin: 40px auto; padding: 0 15px; }
-        .game-card { background: #0a1f44; color: white; padding: 25px; border-radius: 20px; text-align: center; border: 2px solid var(--gold); }
-        .drama-box { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; margin: 15px 0; font-style: italic; }
-        .team-btns { display: flex; gap: 10px; margin-top: 20px; }
-        .team-btn { flex: 1; padding: 15px; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
-        .btn-a { background: #e53e3e; color: white; }
-        .btn-b { background: #3182ce; color: white; }
-        #judgment-box { display: none; background: white; color: #1a202c; padding: 20px; border-radius: 15px; margin-top: 20px; text-align: left; border-left: 5px solid var(--gold); }
-
-        .footer { background: var(--navy); color: white; text-align: center; padding: 40px; margin-top: 50px; }
+        :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; color: #1e293b; }
+        .navbar { background: var(--navy); color: white; padding: 15px 5%; border-bottom: 4px solid var(--gold); display: flex; justify-content: space-between; align-items: center; }
+        .hero { background: var(--navy); color: white; text-align: center; padding: 50px 20px 80px; }
+        .container { max-width: 700px; margin: -50px auto 30px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        textarea { width: 100%; height: 100px; padding: 15px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 16px; margin-bottom: 10px; resize: none; }
+        .btn { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; transition: 0.3s; }
+        .btn-navy { background: var(--navy); color: white; }
+        .game-tabs { display: flex; background: #edf2f7; border-radius: 12px; padding: 5px; margin: 25px 0 15px; }
+        .tab-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: none; }
+        .tab-btn.active { background: var(--navy); color: white; }
+        .game-card { border: 2px solid #e2e8f0; padding: 20px; border-radius: 15px; display: none; }
+        .game-card.active { display: block; animation: fadeIn 0.4s; }
+        .choice-btn { width: 100%; text-align: left; padding: 12px; margin-top: 8px; border: 1px solid #cbd5e0; border-radius: 8px; background: #f8fafc; cursor: pointer; }
+        .res-box { display: none; margin-top: 15px; padding: 15px; background: #f0f9ff; border-left: 5px solid var(--gold); border-radius: 8px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-    <nav class="navbar">
-        <div style="font-weight:bold; font-size:1.4rem;">⚖️ SheriaHub</div>
-        <div style="background:rgba(255,255,255,0.1); padding:5px 10px; border-radius:5px;">KENYA 🇰🇪</div>
-    </nav>
+<nav class="navbar"><div style="font-weight:700; font-size:1.3rem;">⚖️ SheriaHub</div><div>KENYA 🇰🇪</div></nav>
 
-    <header class="hero">
-        <h1>Your Legal Rights, Simplified.</h1>
-        <p>Instant legal intelligence for Citizens, Tenants & Motorists.</p>
-    </header>
+<header class="hero">
+    <h1 style="margin:0; font-family:'Poppins';">Instant Legal Intelligence</h1>
+    <p>Ask a question or test your knowledge in the Game Center</p>
+</header>
 
-    <main class="chat-container">
-        <textarea id="q" placeholder="Ask about rent, deposits, or evictions..."></textarea>
-        <button class="ask-btn" onclick="askAi()">Get AI Consultation</button>
-        <div id="res"></div>
-    </main>
+<div class="container">
+    <textarea id="q" placeholder="Ask about rent, employment, or traffic laws..."></textarea>
+    <button class="btn btn-navy" onclick="askAi()">Get AI Consultation</button>
+    <div id="ai-res"></div>
 
-    <section class="game-section">
-        <div class="game-card">
-            <h2 style="margin-top:0; color:var(--gold);">⚖️ Who is the Drama?</h2>
-            <p style="font-size:0.9rem; opacity:0.8;">The AIBI Relationship Court is now in session.</p>
-            
-            <div id="drama-content" class="drama-box">Loading today's case...</div>
+    <div class="game-tabs">
+        <button class="tab-btn active" onclick="switchGame('drama', this)">⚖️ Drama Court</button>
+        <button class="tab-btn" onclick="switchGame('kanjo', this)">👮 Kanjo Survival</button>
+    </div>
 
-            <div id="game-controls">
-                <p>Whose side are you on?</p>
-                <div class="team-btns">
-                    <button id="btn-a" class="team-btn btn-a" onclick="vote('a')">Team Person A</button>
-                    <button id="btn-b" class="team-btn btn-b" onclick="vote('b')">Team Person B</button>
-                </div>
-            </div>
-
-            <div id="judgment-box">
-                <h4 style="margin-top:0;">👨‍⚖️ The Court's Ruling:</h4>
-                <p id="judgment-text"></p>
-                <button class="ask-btn" style="padding:10px;" onclick="loadDrama()">Next Case ➔</button>
-            </div>
+    <div id="game-drama" class="game-card active">
+        <p id="drama-text">Loading case...</p>
+        <div id="drama-btns" style="display:flex; gap:10px;">
+            <button id="team-a" class="choice-btn" style="text-align:center; background:#fee2e2;" onclick="voteDrama()"></button>
+            <button id="team-b" class="choice-btn" style="text-align:center; background:#e0f2fe;" onclick="voteDrama()"></button>
         </div>
-    </section>
+        <div id="drama-res" class="res-box">
+            <strong>Verdict:</strong> <p id="drama-judgment"></p>
+            <button class="btn btn-navy" style="padding:10px;" onclick="loadDrama()">Next Case</button>
+        </div>
+    </div>
 
-    <footer class="footer">
-        <p>© 2026 SheriaHub Kenya | Built for Justice</p>
-    </footer>
+    <div id="game-kanjo" class="game-card">
+        <p id="kanjo-text">Loading encounter...</p>
+        <div id="kanjo-btns">
+            <button id="opt-a" class="choice-btn" onclick="voteKanjo('a')"></button>
+            <button id="opt-b" class="choice-btn" onclick="voteKanjo('b')"></button>
+            <button id="opt-c" class="choice-btn" onclick="voteKanjo('c')"></button>
+        </div>
+        <div id="kanjo-res" class="res-box">
+            <strong>Outcome:</strong> <p id="kanjo-outcome"></p>
+            <button class="btn btn-navy" style="padding:10px;" onclick="loadKanjo()">New Encounter</button>
+        </div>
+    </div>
+</div>
 
 <script>
     const API = "https://sheriahub.onrender.com";
-    let currentDrama = null;
+    let state = { drama: null, kanjo: null };
 
-    // --- DRAMA GAME LOGIC ---
+    // --- GAMES ---
+    function switchGame(g, btn) {
+        document.querySelectorAll('.game-card, .tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(`game-${g}`).classList.add('active');
+        btn.classList.add('active');
+        if(g==='drama' && !state.drama) loadDrama();
+        if(g==='kanjo' && !state.kanjo) loadKanjo();
+    }
+
     async function loadDrama() {
-        const content = document.getElementById("drama-content");
-        const controls = document.getElementById("game-controls");
-        const judgment = document.getElementById("judgment-box");
-        
-        judgment.style.display = "none";
-        controls.style.display = "block";
-        content.innerText = "⏳ Gathering evidence...";
-
-        try {
-            const r = await fetch(`${API}/generate-drama`);
-            currentDrama = await r.json();
-            content.innerText = currentDrama.scenario;
-            document.getElementById("btn-a").innerText = `Team ${currentDrama.person_a}`;
-            document.getElementById("btn-b").innerText = `Team ${currentDrama.person_b}`;
-        } catch (e) { content.innerText = "The court is on a recess (Error)."; }
+        document.getElementById("drama-res").style.display = "none";
+        document.getElementById("drama-btns").style.display = "flex";
+        const r = await fetch(`${API}/generate-drama`);
+        state.drama = await r.json();
+        document.getElementById("drama-text").innerText = state.drama.scenario;
+        document.getElementById("team-a").innerText = `Team ${state.drama.person_a}`;
+        document.getElementById("team-b").innerText = `Team ${state.drama.person_b}`;
     }
 
-    function vote(side) {
-        document.getElementById("game-controls").style.display = "none";
-        const box = document.getElementById("judgment-box");
-        const txt = document.getElementById("judgment-text");
-        box.style.display = "block";
-        txt.innerText = currentDrama.judgment;
+    function voteDrama() {
+        document.getElementById("drama-btns").style.display = "none";
+        document.getElementById("drama-res").style.display = "block";
+        document.getElementById("drama-judgment").innerText = state.drama.judgment;
     }
 
-    // --- CONSULTATION LOGIC ---
+    async function loadKanjo() {
+        document.getElementById("kanjo-res").style.display = "none";
+        document.getElementById("kanjo-btns").style.display = "block";
+        const r = await fetch(`${API}/generate-kanjo`);
+        state.kanjo = await r.json();
+        document.getElementById("kanjo-text").innerText = state.kanjo.scenario;
+        ['a','b','c'].forEach(l => document.getElementById(`opt-${l}`).innerText = state.kanjo[`choice_${l}`]);
+    }
+
+    function voteKanjo(l) {
+        document.getElementById("kanjo-btns").style.display = "none";
+        document.getElementById("kanjo-res").style.display = "block";
+        document.getElementById("kanjo-outcome").innerText = state.kanjo[`outcome_${l}`];
+    }
+
+    // --- CONSULTATION ---
     async function askAi() {
         const q = document.getElementById("q").value;
-        const resDiv = document.getElementById("res");
         if(!q) return;
-        resDiv.innerHTML = "<p>⏳ Analyzing Kenyan Law...</p>";
+        document.getElementById("ai-res").innerHTML = "<p>⏳ Analyzing Kenyan Law...</p>";
         const r = await fetch(`${API}/ask-ai`, {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ question: q, category: "tenant" })
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ question: q })
         });
-        const data = await r.json();
-        resDiv.innerHTML = `<div style="background:#f8fafc; padding:15px; border-radius:10px; margin-top:10px;">${data.summary}</div>`;
+        const d = await r.json();
+        document.getElementById("ai-res").innerHTML = `<div style="background:#f1f5f9; padding:15px; border-radius:10px; margin-top:10px;">${d.summary} <br><br> <i>${d.content}</i></div>`;
     }
 
     window.onload = loadDrama;
