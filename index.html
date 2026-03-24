@@ -3,151 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SheriaHub | Instant AI Legal Intelligence Kenya</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <title>SheriaHub | Legal Games & AI</title>
     <style>
-        :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f5f7fa; --white: #ffffff; --text: #2d3748; --red: #e53e3e; --green: #38a169; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
-        h1, h2, h3, .navbar-brand { font-family: 'Poppins', sans-serif; }
-
-        /* Navigation */
-        .navbar { background: var(--navy); color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--gold); position: sticky; top: 0; z-index: 1000; }
-        .navbar-brand { font-weight: bold; font-size: 1.4rem; }
-
-        /* Hero */
-        .hero { background: var(--navy); color: white; text-align: center; padding: 60px 20px; }
-        
-        /* Categories */
-        .category-selector { display: flex; justify-content: center; gap: 10px; margin: -30px auto 30px; flex-wrap: wrap; padding: 0 15px; }
-        .cat-btn { padding: 12px 20px; border-radius: 30px; border: 2px solid var(--gold); background: var(--white); cursor: pointer; font-weight: 600; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .cat-btn.active { background: var(--gold); color: black; transform: translateY(-2px); }
-
-        /* Chat & Game Containers */
-        .container { width: 95%; max-width: 800px; margin: 20px auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
-        textarea { width: 100%; height: 100px; padding: 15px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 16px; margin-bottom: 15px; resize: none; font-family: inherit; }
-        .ask-btn { width: 100%; padding: 16px; background: var(--navy); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 1.1rem; }
-        
-        /* Jua Mechi Specific Styles */
-        #contract-body { background: #fffcf0; border: 1px dashed #ccc; padding: 20px; font-family: 'Courier New', monospace; line-height: 1.8; margin-top: 15px; border-radius: 8px; }
-        .red-flag { cursor: pointer; border-bottom: 2px transparent; transition: 0.2s; }
-        .red-flag:hover { background: #fef3c7; }
-        .flag-correct { background: #feb2b2 !important; color: #9b2c2c !important; border-radius: 4px; padding: 2px; cursor: default; }
-        .game-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--gold); padding-bottom: 10px; }
-
-        .legal-card { padding: 20px; border-left: 6px solid var(--navy); background: #f8fafc; margin-top: 20px; border-radius: 8px; }
-        .paywall { background: #fffbeb; border: 2px dashed var(--gold); padding: 25px; border-radius: 15px; margin-top: 20px; text-align: center; }
-        footer { background: var(--navy); color: white; text-align: center; padding: 40px 20px; margin-top: auto; }
+        :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f4f7f6; --text: #333; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; color: var(--text); }
+        .nav { background: var(--navy); color: white; padding: 1rem; text-align: center; border-bottom: 4px solid var(--gold); }
+        .container { max-width: 700px; margin: 20px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-navy { background: var(--navy); color: white; }
+        .btn-gold { background: var(--gold); color: white; }
+        .game-box { border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-top: 20px; }
+        .red-flag { cursor: pointer; text-decoration: underline dotted; }
+        .found { background: #feb2b2; color: #9b2c2c; border-radius: 4px; padding: 0 4px; text-decoration: none; }
+        #fact-card { background: var(--navy); color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="navbar-brand">⚖️ SheriaHub</div>
-    <div style="background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 5px; font-size: 0.8rem;">KENYA 🇰🇪</div>
-</nav>
+<div class="nav"><h1>⚖️ SheriaHub Kenya</h1></div>
 
-<header class="hero">
-    <h1>Your Legal Rights, Simplified.</h1>
-    <p>AI-Powered insights for Tenants, Employees & Motorists.</p>
-</header>
-
-<div class="category-selector">
-    <button class="cat-btn active" onclick="setCat('tenant')">🏠 Tenancy</button>
-    <button class="cat-btn" onclick="setCat('employment')">💼 Employment</button>
-    <button class="cat-btn" onclick="setCat('traffic')">🚗 Traffic</button>
-    <button class="cat-btn" onclick="setCat('family')">👨‍👩‍👧 Family</button>
+<div class="container">
+    <h3>1. Ask Sheria AI</h3>
+    <textarea id="q" style="width:100%; height:80px; padding:10px; border-radius:8px; border:1px solid #ddd;" placeholder="Ask about rent, labor, or traffic..."></textarea>
+    <button class="btn btn-navy" style="width:100%; margin-top:10px;" onclick="askAi()">Get Quick Advice</button>
+    <div id="ai-res" style="margin-top:15px; font-style: italic;"></div>
 </div>
 
-<main class="container">
-    <textarea id="q" placeholder="Ask about rent, deposits, or evictions..."></textarea>
-    <button class="ask-btn" onclick="askAi()">Get AI Consultation</button>
-    <div id="res"></div>
-</main>
+<div class="container">
+    <h3>2. Jua Mechi (Spot 3 Errors)</h3>
+    <div id="jua-mechi-content" class="game-box">Loading contract...</div>
+    <div id="jua-status" style="margin-top:10px; font-weight:bold;">Found: 0/3</div>
+    <button class="btn btn-gold" style="margin-top:10px;" onclick="loadJuaMechi()">New Contract</button>
+</div>
 
-<section class="container" id="game-zone">
-    <div class="game-header">
-        <h3 style="margin:0;">🔍 Jua Mechi: Spot Red Flags</h3>
-        <span id="score-badge" style="background:var(--gold); padding:4px 10px; border-radius:20px; font-weight:bold;">Found: 0/3</span>
+<div class="container" style="background: #eef2f3;">
+    <h3>3. Fact or Fallacy?</h3>
+    <div id="fact-card">Click a button to start</div>
+    <div id="fact-controls" style="display:flex; gap:10px;">
+        <button class="btn" style="flex:1; background:#2ecc71; color:white;" onclick="checkFact(true)">FACT</button>
+        <button class="btn" style="flex:1; background:#e74c3c; color:white;" onclick="checkFact(false)">FALLACY</button>
     </div>
-    <p style="font-size:0.9rem; color:#666;">There are 3 illegal clauses in this snippet. Can you find them?</p>
-    
-    <div id="contract-body">Click "Load Game" to start legal training...</div>
-    
-    <div style="margin-top:20px; text-align:center;">
-        <button class="cat-btn" onclick="loadGame()">🔄 Load New Case</button>
-    </div>
-</section>
-
-<footer>
-    <p>© 2026 SheriaHub Kenya | Built for Justice</p>
-</footer>
+    <div id="fact-explanation" style="margin-top:15px; display:none; padding:10px; background:white; border-radius:8px;"></div>
+    <button class="btn btn-navy" style="width:100%; margin-top:10px;" onclick="loadFactGame()">Next Question</button>
+</div>
 
 <script>
-    const API = "https://sheriahub.onrender.com"; 
+    const API = "https://sheriahub.onrender.com"; // Change to your Render URL
     let currentCat = "tenant";
     let flagsFound = 0;
-
-    function setCat(c) {
-        currentCat = c;
-        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-        event.target.classList.add('active');
-        loadGame(); // Refresh game when category changes
-    }
+    let currentFact = null;
 
     async function askAi() {
         const q = document.getElementById("q").value;
-        const resDiv = document.getElementById("res");
-        if(!q) return;
-        
-        resDiv.innerHTML = "⏳ Analyzing Statutes...";
-        try {
-            const response = await fetch(`${API}/ask-ai`, {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ question: q, category: currentCat })
-            });
-            const data = await response.json();
-            resDiv.innerHTML = `<div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div>
-                               <div class="paywall"><h4>🔒 Unlock Deep-Dive</h4><p>Pay KSh 20 via M-Pesa</p></div>`;
-        } catch(e) { resDiv.innerHTML = "❌ Error connecting to Sheria AI."; }
+        const resDiv = document.getElementById("ai-res");
+        resDiv.innerText = "⏳ Consulting statutes...";
+        const r = await fetch(`${API}/ask-ai`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({question: q, category: currentCat})
+        });
+        const data = await r.json();
+        resDiv.innerText = data.summary;
     }
 
-    // JUA MECHI LOGIC
-    async function loadGame() {
-        const body = document.getElementById("contract-body");
-        const badge = document.getElementById("score-badge");
+    async function loadJuaMechi() {
+        const box = document.getElementById("jua-mechi-content");
         flagsFound = 0;
-        badge.innerText = "Found: 0/3";
-        body.innerHTML = "⏳ Drafting contract...";
-
-        try {
-            const res = await fetch(`${API}/generate-jua-mechi?category=${currentCat}`);
-            const data = await res.json();
-            
-            let content = data.contract_html;
-            // Inject clickable spans for red flags
-            data.red_flags.forEach((flag, i) => {
-                const regex = new RegExp(flag, 'g');
-                content = content.replace(regex, `<span class="red-flag" onclick="markFound(this, '${data.explanations[i]}')">${flag}</span>`);
-            });
-            body.innerHTML = content;
-        } catch(e) { body.innerHTML = "❌ Error loading game."; }
+        document.getElementById("jua-status").innerText = "Found: 0/3";
+        box.innerHTML = "⏳ Drafting...";
+        const r = await fetch(`${API}/generate-jua-mechi?category=${currentCat}`);
+        const d = await r.json();
+        let html = d.contract_html;
+        d.red_flags.forEach((f, i) => {
+            html = html.replace(f, `<span class="red-flag" onclick="foundFlag(this, '${d.explanations[i]}')">${f}</span>`);
+        });
+        box.innerHTML = html;
     }
 
-    function markFound(el, reason) {
-        if(el.classList.contains('flag-correct')) return;
-        el.classList.add('flag-correct');
+    function foundFlag(el, msg) {
+        if(el.classList.contains('found')) return;
+        el.classList.add('found');
         flagsFound++;
-        document.getElementById("score-badge").innerText = `Found: ${flagsFound}/3`;
-        alert(`🎯 Correct! Red Flag: ${reason}`);
-        
-        if(flagsFound === 3) {
-            alert("👏 Champion! You've spotted all illegal clauses. You're ready to be an Advocate!");
+        document.getElementById("jua-status").innerText = `Found: ${flagsFound}/3`;
+        alert(`🎯 Correct! ${msg}`);
+    }
+
+    async function loadFactGame() {
+        document.getElementById("fact-explanation").style.display = "none";
+        document.getElementById("fact-card").innerText = "⏳ Fetching myth...";
+        const r = await fetch(`${API}/get-fact-fallacy?category=${currentCat}`);
+        currentFact = await r.json();
+        document.getElementById("fact-card").innerText = currentFact.statement;
+    }
+
+    function checkFact(val) {
+        const exp = document.getElementById("fact-explanation");
+        exp.style.display = "block";
+        if(val === currentFact.is_fact) {
+            exp.innerHTML = `✅ <b>Correct!</b><br>${currentFact.explanation}`;
+        } else {
+            exp.innerHTML = `❌ <b>Wrong!</b><br>${currentFact.explanation}`;
         }
     }
 
-    window.onload = loadGame;
+    window.onload = () => { loadJuaMechi(); loadFactGame(); };
 </script>
 </body>
 </html>
