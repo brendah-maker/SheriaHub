@@ -1,156 +1,99 @@
 import os
-import json
-import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from groq import Groq
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+import google.generativeai as genai
+from intasend import APIService
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
-# --- 1. DATABASE ---
-uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
-if uri.startswith("postgres://"):
-    uri = uri.replace("postgres://", "postgresql://", 1)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = uri
+# 1. FIXED: Correct SQLAlchemy Config Key
+# The key is 'SQLALCHEMY_DATABASE_URI', not 'DATABASE_DATABASE_URI'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+# Payment Model
 class Payment(db.Model):
-    id = db.Column(db.String(100), primary_key=True)
-    status = db.Column(db.String(20), default="pending")
-    credits = db.Column(db.Integer, default=0)
+    id = db.Column(db.Integer, primary_key=True)
+    checkout_id = db.Column(db.String(100), unique=True, nullable=False)
+    status = db.Column(db.String(20), default='pending')
+    amount = db.Column(db.Integer)
+    phone = db.Column(db.String(20))
 
-with app.app_context():
-    db.create_all()
-    try:
-        db.session.execute(text("ALTER TABLE payment ADD COLUMN credits INTEGER DEFAULT 0"))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
+# Initialize External Services
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
-# --- 2. API KEYS ---
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
-INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY", "").strip()
-INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY", "").strip()
-IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
-BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
+# Use 'test=True' for development, 'test=False' for live
+service = APIService(
+    token=os.environ.get("INTASEND_API_KEY"),
+    publishable_key=os.environ.get("INTASEND_PUBLISHABLE_KEY"),
+    test_mode=False 
+)
 
-client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
-
-@app.route('/')
-def health():
-    return jsonify({"status": "Healthy"}), 200
-
-# --- 3. ASK-AI (UNIFIED FOR CONSULTATION & GAME) ---
-@app.route('/ask-ai', methods=['POST'])
-def ask_ai():
-    if not client: return jsonify({"error": "AI not ready"}), 500
+@app.route('/stkpush-game', methods=['POST'])
+def stkpush_game():
+    data = request.json
+    phone = data.get('phone')
     
     try:
-        data = request.get_json()
-        question = data.get("question", "")
-        category = data.get("category", "tenant")
-        checkout_id = data.get("checkout_id")
-        level = data.get("level", "Beginner")
-
-        is_paid = False
-        credits_left = 0
-
-        # Credit Logic
-        if checkout_id and checkout_id != "undefined":
-            payment = Payment.query.get(checkout_id)
-            if payment and payment.status == "paid" and payment.credits > 0:
-                is_paid = True
-                payment.credits -= 1
-                credits_left = payment.credits
-                db.session.commit()
-
-        # System Contexts
-        if category == "game":
-            system_msg = (
-                f"You are the 'Sheria Quiz Master'. Level: {level}. "
-                "1. If user says 'START', give 1 Kenyan legal scenario with 3 MCQ options (a, b, c). "
-                "2. If user answers, tell them if they are CORRECT or WRONG with a funny reaction. "
-                "3. Explain the law in 1 sentence. Be witty and use emojis."
-            )
-        else:
-            law_map = {
-                "employment": "Employment Law", "land": "Land Law", "family": "Family Law",
-                "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil/Criminal Law"
-            }
-            system_msg = f"Kenyan Legal Expert on {law_map.get(category, 'Law')}. Format: SUMMARY: [text] DEEP_DIVE: [text]"
-
-        completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant", 
-            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": question}]
+        # 2. FIXED: IntaSend SDK syntax
+        # Using service.collect.mpesa_stk_push (no brackets on collect)
+        response = service.collect.mpesa_stk_push(
+            phone_number=phone,
+            amount=20,
+            narrative="SheriaHub Unlimited"
         )
         
-        ai_resp = completion.choices[0].message.content
+        # IntaSend returns 'invoice' object containing the 'id'
+        checkout_id = response.get('id') or response.get('invoice', {}).get('invoice_id')
+        
+        if not checkout_id:
+            return jsonify({"error": "Failed to generate checkout ID"}), 400
 
-        # Parsing
-        if category != "game":
-            clean_txt = ai_resp.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
-            if "DEEP_DIVE:" in clean_txt:
-                parts = clean_txt.split("DEEP_DIVE:")
-                summary = parts[0].replace("SUMMARY:", "").strip()
-                content = parts[1].strip()
-            else:
-                summary = ai_resp.split('.')[0] + "."
-                content = ai_resp
-        else:
-            summary = ai_resp
-            content = "Quiz Active"
-
-        return jsonify({
-            "status": "premium" if (is_paid or category == "game") else "free",
-            "credits_left": credits_left,
-            "summary": summary,
-            "content": content
-        })
-
+        new_payment = Payment(checkout_id=checkout_id, amount=20, phone=phone)
+        db.session.add(new_payment)
+        db.session.commit()
+        
+        return jsonify({"checkout_id": checkout_id}), 200
     except Exception as e:
+        db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-# --- 4. PAYMENT & STATUS ---
-@app.route('/stkpush', methods=['POST'])
-def stk_push():
+@app.route('/check-payment/<checkout_id>', methods=['GET'])
+def check_payment(checkout_id):
     try:
-        data = request.get_json()
-        phone = data.get("phone", "").strip().replace("+", "")
-        if phone.startswith("0"): phone = "254" + phone[1:]
-        payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
-        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
-        res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
-        res_data = res.json()
-        inv_id = res_data.get("invoice", {}).get("invoice_id")
-        if inv_id:
-            db.session.add(Payment(id=inv_id, status="pending", credits=0))
+        # 3. FIXED: IntaSend status check syntax
+        status_resp = service.collect.status(invoice_id=checkout_id)
+        
+        # Dig into the invoice object for the state
+        invoice = status_resp.get('invoice', {})
+        state = invoice.get('state', 'PENDING').upper()
+        
+        payment = Payment.query.filter_by(checkout_id=checkout_id).first()
+        
+        if not payment:
+            return jsonify({"status": "not_found"}), 404
+
+        if state == 'COMPLETE':
+            payment.status = 'paid'
             db.session.commit()
-            return jsonify({"checkout_id": inv_id})
-        return jsonify({"error": "STK Failed"}), 400
+            return jsonify({"status": "paid"}), 200
+        
+        # If the API says it's failed, update DB accordingly
+        if state in ['FAILED', 'CANCELLED']:
+            payment.status = 'failed'
+            db.session.commit()
+            return jsonify({"status": "failed"}), 200
+            
+        return jsonify({"status": "pending"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/check-payment/<id>')
-def check_payment(id):
-    p = Payment.query.get(id)
-    if p and p.status == "paid": return jsonify({"status": "paid", "credits": p.credits})
-    try:
-        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
-        res = requests.get(f"{BASE_URL}/payment/status/{id}/", headers=headers)
-        if res.json().get("invoice", {}).get("state") == "COMPLETE":
-            if not p: p = Payment(id=id, status="paid", credits=2)
-            else: p.status = "paid"; p.credits = 2
-            db.session.add(p); db.session.commit()
-            return jsonify({"status": "paid", "credits": 2})
-        return jsonify({"status": "pending"})
-    except:
-        return jsonify({"status": "error"}), 500
+        print(f"Error checking status: {e}")
+        return jsonify({"status": "pending"}), 200
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all() 
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
