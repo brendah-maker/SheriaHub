@@ -1,7 +1,6 @@
 import os
 import json
 import requests
-import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from groq import Groq
@@ -36,47 +35,59 @@ BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# --- HELPER: CLEAN AI JSON ---
-def get_ai_json(prompt):
-    completion = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}],
-        response_format={"type": "json_object"}
-    )
-    return json.loads(completion.choices[0].message.content)
-
-# --- GAME ROUTES ---
-@app.route('/generate-drama', methods=['GET'])
-def generate_drama():
-    prompt = "Return ONLY JSON for a Kenyan legal dispute: {'scenario': '2 sentences', 'person_a': 'Name', 'person_b': 'Name', 'judgment': '3 sentences citing Kenyan law'}"
-    return jsonify(get_ai_json(prompt))
-
+# --- KANJO GAME ENGINE ---
 @app.route('/generate-kanjo', methods=['GET'])
 def generate_kanjo():
-    prompt = "Return ONLY JSON for a Nairobi Kanjo encounter: {'scenario': '...', 'choice_a': '...', 'choice_b': '...', 'choice_c': '...', 'outcome_a': '...', 'outcome_b': '...', 'outcome_c': '...', 'correct_choice': 'C'}"
-    return jsonify(get_ai_json(prompt))
+    prompt = (
+        "Generate a 'Kanjo Chronicles' survival scenario in Nairobi CBD. "
+        "The user is faced with a city council officer. Provide 3 options: "
+        "A (Compliant/Bribe-prone), B (Aggressive), C (Legally correct). "
+        "Return ONLY a JSON object: {"
+        "'scenario': '...', 'choice_a': '...', 'choice_b': '...', 'choice_c': '...', "
+        "'outcome_a': '...', 'outcome_b': '...', 'outcome_c': '...', 'correct_choice': 'C'}"
+    )
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-# --- CONSULTATION ROUTE ---
+# --- CONSULTATION LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     data = request.get_json()
-    q, cat, ck_id = data.get("question"), data.get("category", "tenant"), data.get("checkout_id")
-    is_paid, credits = False, 0
-    
-    if ck_id and ck_id != "undefined":
-        p = Payment.query.get(ck_id)
+    question = data.get("question", "")
+    category = data.get("category", "tenant")
+    checkout_id = data.get("checkout_id")
+
+    is_paid, credits_left = False, 0
+    if checkout_id and checkout_id != "undefined":
+        p = Payment.query.get(checkout_id)
         if p and p.status == "paid" and p.credits > 0:
-            is_paid, p.credits = True, p.credits - 1
-            credits = p.credits
+            is_paid = True
+            p.credits -= 1
+            credits_left = p.credits
             db.session.commit()
 
-    sys_msg = f"You are a Kenyan legal expert. Start with 'SUMMARY: ' then 'DEEP_DIVE: ' for {cat} law."
-    res = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": q}])
-    txt = res.choices[0].message.content
-    sum_part = txt.split("DEEP_DIVE:")[0].replace("SUMMARY:", "").strip()
-    deep_part = txt.split("DEEP_DIVE:")[1].strip() if "DEEP_DIVE:" in txt else txt
-    
-    return jsonify({"status": "premium" if is_paid else "free", "credits_left": credits, "summary": sum_part, "content": deep_part if is_paid else "🔒 Pay KSh 20 to unlock Section citations."})
+    sys_msg = f"You are a Kenyan legal expert on {category} law. Start with 'SUMMARY: ' then 'DEEP_DIVE: '."
+    completion = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": question}]
+    )
+    full_text = completion.choices[0].message.content
+    summary = full_text.split("DEEP_DIVE:")[0].replace("SUMMARY:", "").strip()
+    content = full_text.split("DEEP_DIVE:")[1].strip() if "DEEP_DIVE:" in full_text else full_text
+
+    return jsonify({
+        "status": "premium" if is_paid else "free",
+        "credits_left": credits_left,
+        "summary": summary,
+        "content": content if is_paid else "🔒 Pay KSh 20 to unlock Section citations and full legal steps."
+    })
 
 # --- PAYMENT ROUTES ---
 @app.route('/stkpush', methods=['POST'])
@@ -94,10 +105,9 @@ def stk_push():
     return jsonify({"error": "Failed"}), 400
 
 @app.route('/check-payment/<id>')
-def check_p(id):
+def check_payment(id):
     p = Payment.query.get(id)
-    if not p: return jsonify({"status": "pending"})
-    if p.status == "paid": return jsonify({"status": "paid"})
+    if p and p.status == "paid": return jsonify({"status": "paid"})
     res = requests.get(f"{BASE_URL}/payment/status/{id}/", headers={"Authorization": f"Bearer {INTASEND_SECRET_KEY}"})
     if res.json().get("invoice", {}).get("state") == "COMPLETE":
         p.status, p.credits = "paid", 2
