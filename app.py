@@ -47,15 +47,16 @@ def health():
 def generate_jua_mechi():
     category = request.args.get("category", "tenant")
     
+
+
     prompt = (
-        f"Act as a Kenyan Legal Expert. Create a 'Jua Mechi' (Spot the Error) game snippet for {category} law. "
-        "Generate a short 2-paragraph contract text that looks official but contains EXACTLY 3 illegal clauses "
-        "under Kenyan Statutes (e.g., the Employment Act 2007 or Rent Restriction Act). "
-        "Return ONLY a JSON object with these keys: "
-        "'contract_html' (the full text), "
-        "'red_flags' (array of the 3 illegal phrases exactly as they appear in the text), "
-        "'explanations' (array of 3 brief reasons why they are illegal)."
-    )
+    f"Act as a Kenyan Legal Expert. Create a 'Jua Mechi' game for {category} law. "
+    "Instead of just contracts, you can generate a POLICE ENCOUNTER, a LAWYER'S LETTER, or a TENANCY STORY. "
+    "Return a JSON object with: "
+    "'contract_html' (The story or text containing 3 legal errors), "
+    "'red_flags' (The 3 illegal phrases), "
+    "'explanations' (The specific Kenyan Law/Article being violated)."
+)
     
     try:
         completion = client.chat.completions.create(
