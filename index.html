@@ -3,69 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="/sheria.ico" type="image/x-icon">
-    
-    <!-- SEO & Indexing Meta Tags -->
-    <title>SheriaHub | Instant AI Legal Intelligence for Kenya</title>
-    <meta name="description" content="Get instant legal analysis on Kenyan law. Expert AI guidance on the Employment Act 2007, Tenancy rights, Land Act, Children Act 2022, and the Penal Code.">
-    <meta name="keywords" content="Kenyan law AI, legal advice Kenya, Employment Act 2007, Children Act 2022, landlord rights Kenya, traffic fines Kenya, Small Claims Court Kenya">
-
-    <!-- Fonts & Icons -->
+    <title>SheriaHub | AI Legal Intelligence & Survival Game</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-    
     <style>
-        :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f5f7fa; --white: #ffffff; --text: #2d3748; }
+        :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f5f7fa; --white: #ffffff; --text: #2d3748; --red: #e53e3e; --green: #38a169; }
         * { box-sizing: border-box; }
-        html, body { height: 100%; margin: 0; scroll-behavior: smooth; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; line-height: 1.6; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; min-height: 100vh; color: var(--text); line-height: 1.6; }
         h1, h2, h3, .navbar-brand { font-family: 'Poppins', sans-serif; }
-
+        
         /* Navigation */
         .navbar { background: var(--navy); color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--gold); position: sticky; top: 0; z-index: 1000; }
         .navbar-brand { font-weight: bold; font-size: 1.4rem; }
-        .region-badge { font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2); }
-
-        /* Hero */
-        .hero { background: var(--navy); color: white; text-align: center; padding: 60px 20px 100px; }
+        .hero { background: var(--navy); color: white; text-align: center; padding: 50px 20px 100px; }
         .hero h1 { margin: 0; font-size: 2.2rem; }
-        .hero p { opacity: 0.9; margin: 15px auto 0; max-width: 600px; font-size: 1.1rem; }
-
-        .main-content { flex: 1; }
 
         /* Categories */
         .category-selector { display: flex; justify-content: center; gap: 10px; margin: -40px auto 30px; padding: 0 15px; flex-wrap: wrap; z-index: 10; position: relative; max-width: 1000px; }
         .cat-btn { padding: 12px 20px; border-radius: 30px; border: 2px solid var(--gold); background: var(--white); cursor: pointer; font-weight: 600; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-size: 0.9rem; }
         .cat-btn.active { background: var(--gold); color: black; transform: translateY(-2px); }
 
-        /* Chat UI */
+        /* Main UI */
         .chat-container { width: 95%; max-width: 700px; margin: 20px auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
-        textarea { width: 100%; height: 130px; padding: 18px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 16px; margin-bottom: 15px; resize: none; outline: none; font-family: inherit; transition: 0.3s; }
-        textarea:focus { border-color: var(--navy); }
-        .ask-btn { width: 100%; padding: 16px; background: var(--navy); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 1.1rem; transition: 0.3s; font-family: 'Poppins', sans-serif; }
+        textarea { width: 100%; height: 130px; padding: 18px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 16px; margin-bottom: 15px; resize: none; outline: none; font-family: inherit; }
+        .ask-btn { width: 100%; padding: 16px; background: var(--navy); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 1.1rem; transition: 0.3s; }
         .ask-btn:disabled { background: #cbd5e0; }
 
-        /* Results */
-        .legal-card { padding: 25px; border-left: 6px solid var(--navy); background: #f8fafc; margin-top: 25px; border-radius: 12px; text-align: left; }
+        /* AI Results */
+        .legal-card { padding: 25px; border-left: 6px solid var(--navy); background: #f8fafc; margin-top: 25px; border-radius: 12px; }
         .paywall { background: #fffbeb; border: 2px dashed var(--gold); padding: 35px; border-radius: 15px; margin-top: 25px; text-align: center; }
-        .premium-content { background: #f0fff4; border: 2px solid #38a169; padding: 30px; border-radius: 15px; margin-top: 25px; line-height: 1.8; text-align: left; white-space: pre-wrap; }
+        .premium-content { background: #f0fff4; border: 2px solid #38a169; padding: 30px; border-radius: 15px; margin-top: 25px; line-height: 1.8; white-space: pre-wrap; }
         .credits-badge { background: var(--gold); padding: 6px 14px; border-radius: 8px; font-weight: 700; display: inline-block; margin-bottom: 12px; font-size: 0.85rem; }
 
-        /* Practice Areas (SEO) */
-        .info-section { padding: 60px 5%; max-width: 1200px; margin: 0 auto; }
-        .practice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-bottom: 60px; }
-        .practice-box { background: white; padding: 25px; border-radius: 15px; border-top: 4px solid var(--gold); box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
-        .faq-container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .faq-item { border-bottom: 1px solid #edf2f7; padding: 15px 0; }
-        .faq-q { font-weight: 600; color: var(--navy); }
-
         /* WIDGET GAME STYLING */
-        .widget-bubble { position: fixed; bottom: 30px; right: 30px; background: var(--gold); width: 65px; height: 65px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2rem; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 2000; }
-        .widget-window { position: fixed; bottom: 110px; right: 30px; width: 350px; height: 480px; background: white; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.15); display: none; flex-direction: column; z-index: 2001; border: 1px solid #e2e8f0; overflow: hidden; animation: slideUp 0.3s ease; }
+        .widget-bubble { position: fixed; bottom: 30px; right: 30px; background: var(--gold); width: 65px; height: 65px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2rem; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 2000; transition: 0.3s; }
+        .widget-window { position: fixed; bottom: 110px; right: 30px; width: 360px; height: 520px; background: white; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.15); display: none; flex-direction: column; z-index: 2001; border: 1px solid #e2e8f0; overflow: hidden; animation: slideUp 0.3s ease; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .widget-header { background: var(--navy); color: white; padding: 15px; display: flex; justify-content: space-between; font-weight: 700; }
-        .widget-body { flex: 1; padding: 20px; overflow-y: auto; background: #fcfcfc; font-size: 0.9rem; }
-        .quiz-option { width: 100%; padding: 12px; margin-top: 8px; border-radius: 10px; border: 1px solid #ddd; background: white; cursor: pointer; text-align: left; font-weight: 600; }
-        .quiz-option:hover { border-color: var(--gold); background: #fffcf0; }
+        .widget-body { flex: 1; padding: 20px; overflow-y: auto; background: #fcfcfc; transition: background 0.5s ease; }
+        
+        .bribe-meter { font-size: 1.2rem; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .lvl-tag { background: #e2e8f0; padding: 4px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; color: var(--navy); }
+        
+        .game-opt { width: 100%; padding: 12px; margin-top: 10px; border-radius: 10px; border: 1px solid #ddd; background: white; cursor: pointer; text-align: left; font-weight: 600; transition: 0.2s; }
+        .game-opt:hover { border-color: var(--gold); background: #fffcf0; }
+        
+        /* Flash animations */
+        .flash-correct { background: #c6f6d5 !important; }
+        .flash-wrong { background: #fed7d7 !important; }
 
         .footer { background: var(--navy); color: white; text-align: center; padding: 50px 20px; border-top: 6px solid var(--gold); margin-top: auto; }
         @media (max-width: 600px) { .hero h1 { font-size: 1.6rem; } .category-selector { margin-top: -50px; } .widget-window { width: 90%; right: 5%; bottom: 100px; } }
@@ -75,19 +59,18 @@
 
     <nav class="navbar">
         <div class="navbar-brand">⚖️ SheriaHub</div>
-        <div class="region-badge">KENYA 🇰🇪</div>
+        <div style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 5px;">KENYA 🇰🇪</div>
     </nav>
 
     <div class="main-content">
         <header class="hero">
-            <h1>Your Legal Rights, Simplified.</h1>
-            <p>Instant legal intelligence for Citizens, Tenants & Motorists using Kenyan Statutes.</p>
+            <h1>Legal Rights, Simplified.</h1>
+            <p>Access Law Analysis or test your skills in the <strong>Sheria Survival Game</strong>.</p>
         </header>
 
         <div class="category-selector">
             <button class="cat-btn active" id="btn-tenant" onclick="setCat('tenant')">🏠 Tenancy</button>
             <button class="cat-btn" id="btn-employment" onclick="setCat('employment')">💼 Employment</button>
-            <button class="cat-btn" id="btn-land" onclick="setCat('land')">🌳 Land</button>
             <button class="cat-btn" id="btn-family" onclick="setCat('family')">👨‍👩‍👧 Family</button>
             <button class="cat-btn" id="btn-traffic" onclick="setCat('traffic')">🚗 Traffic</button>
             <button class="cat-btn" id="btn-civil_criminal" onclick="setCat('civil_criminal')">⚖️ Civil/Criminal</button>
@@ -98,56 +81,40 @@
             <button class="ask-btn" id="askBtn" onclick="askAi()">Get AI Consultation</button>
             <div id="res"></div>
         </main>
-
-        <section class="info-section">
-            <h2 style="text-align:center; margin-bottom:40px;">Legal Areas Covered</h2>
-            <div class="practice-grid">
-                <div class="practice-box"><h3>Rent Restriction Act</h3><p>Your rights on rent increases, deposit refunds, and lawful eviction notice.</p></div>
-                <div class="practice-box"><h3>Employment Act 2007</h3><p>Guidance on wrongful dismissal, summary termination, and leave rights.</p></div>
-                <div class="practice-box"><h3>Children Act 2022</h3><p>Information on child maintenance, custody, and parental responsibility.</p></div>
-                <div class="practice-box"><h3>Penal Code Cap 63</h3><p>Insights into criminal offenses, Article 49 rights, and police bond.</p></div>
-            </div>
-
-            <h2 style="text-align:center; margin:40px 0;">Frequently Asked Questions</h2>
-            <div class="faq-container">
-                <div class="faq-item"><div class="faq-q">Can a landlord increase rent without notice?</div><p style="font-size:0.9rem; color:#4a5568;">No. Under the Rent Restriction Act, a landlord must provide at least one month's written notice.</p></div>
-                <div class="faq-item"><div class="faq-q">How long can police hold you without court?</div><p style="font-size:0.9rem; color:#4a5568;">Article 49 of the Constitution requires you be brought to court within 24 hours.</p></div>
-            </div>
-
-            <div style="background: #edf2f7; padding: 40px; text-align: center; border-radius: 20px; margin-top: 40px;">
-                <h2>🚀 What's Coming Next?</h2>
-                <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-top: 20px;">
-                    <span style="background: white; padding: 10px 20px; border-radius: 30px; font-size: 0.85rem; font-weight: 600; border: 1px solid #cbd5e0;">⚖️ Small Claims Filing</span>
-                    <span style="background: white; padding: 10px 20px; border-radius: 30px; font-size: 0.85rem; font-weight: 600; border: 1px solid #cbd5e0;">📁 Business Registration</span>
-                </div>
-            </div>
-        </section>
     </div>
 
-    <!-- STREET SMARTS GAME WIDGET -->
-    <div class="widget-bubble" onclick="toggleWidget()">🏙️</div>
+    <!-- SURVIVAL GAME WIDGET -->
+    <div class="widget-bubble" onclick="toggleWidget()">🎮</div>
     <div id="gameWidget" class="widget-window">
-        <div class="widget-header"><span>Street Smarts: Nairobi</span><span style="cursor:pointer;" onclick="toggleWidget()">✕</span></div>
+        <div class="widget-header"><span>Sheria Survival Game</span><span style="cursor:pointer;" onclick="toggleWidget()">✕</span></div>
         <div id="gameBody" class="widget-body">
-            <p id="gameText">Can you survive the streets of Nairobi without paying a bribe? Let's test your legal street smarts!</p>
-            <div id="gameControls"><button class="ask-btn" style="padding:12px;" onclick="gameCycle('START')">Start Street Challenge 🚀</button></div>
+            <div class="bribe-meter">
+                <span id="lives">💰💰💰</span>
+                <span id="rank" class="lvl-tag">Common Mwananchi</span>
+            </div>
+            <p id="gameText">Select your survival path to begin:</p>
+            <div id="gameControls">
+                <button class="game-opt" onclick="startGame('Street Smarts')">🏙️ Street Smarts</button>
+                <button class="game-opt" onclick="startGame('Tenant Trials')">🏠 Tenant Trials</button>
+                <button class="game-opt" onclick="startGame('Office Survival')">💼 Office Survival</button>
+            </div>
         </div>
     </div>
 
     <footer class="footer">
         <p>© 2026 SheriaHub Kenya | Built for Justice</p>
-        <p style="font-size: 0.75rem; opacity: 0.6; margin-top: 10px;">Disclaimer: AI information only, not professional legal advice.</p>
     </footer>
 
 <script>
     const API = "https://sheriahub.onrender.com"; 
     let cat = "tenant";
+    let gameLives = 3;
+    let gameScore = 0;
     let lastGameQ = "";
-    let poller = null;
+    let activePath = "";
 
     const savePaidId = (id) => localStorage.setItem('sheria_payment_id', id);
     const getPaidId = () => localStorage.getItem('sheria_payment_id');
-    const clearPaidId = () => localStorage.removeItem('sheria_payment_id');
 
     function toggleWidget() {
         const w = document.getElementById("gameWidget");
@@ -158,82 +125,81 @@
         cat = c;
         document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`btn-${c}`).classList.add('active');
-        const p = { tenant: "Ask about rent...", employment: "Ask about dismissal...", land: "Ask about titles...", family: "Ask about custody...", traffic: "Ask about fines...", civil_criminal: "Ask about theft..." };
+        const p = { tenant: "Ask about rent...", employment: "Ask about dismissal...", family: "Ask about custody...", traffic: "Ask about fines...", civil_criminal: "Ask about theft..." };
         document.getElementById("q").placeholder = p[c];
     }
 
-    async function askAi(checkId = null) {
-        const qInput = document.getElementById("q");
+    async function askAi() {
+        const q = document.getElementById("q").value;
         const resDiv = document.getElementById("res");
-        const btn = document.getElementById("askBtn");
-        const activeId = checkId || getPaidId();
-        const question = qInput.value;
-        if (!question) return;
-
-        btn.disabled = true;
-        resDiv.innerHTML = `<p style="text-align:center;">⚖️ Analyzing Kenyan Law...</p>`;
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => { controller.abort(); resDiv.innerHTML = `<p style="color:red; text-align:center;">⚠️ Server busy. Please try again.</p>`; btn.disabled = false; }, 55000);
-
+        if (!q) return;
+        resDiv.innerHTML = "<p style='text-align:center;'>⚖️ Analyzing...</p>";
         try {
-            const res = await fetch(`${API}/ask-ai`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ question, category: cat, checkout_id: activeId }), signal: controller.signal });
-            clearTimeout(timeoutId);
+            const res = await fetch(`${API}/ask-ai`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ question: q, category: cat, checkout_id: getPaidId() }) });
             const data = await res.json();
+            if (data.status === "premium") resDiv.innerHTML = `<div class="premium-content"><h3>📋 Result</h3>${data.content.replace(/\n/g, '<br>')}</div>`;
+            else resDiv.innerHTML = `<div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div><div class="paywall"><h4>🔒 Unlock Full Details</h4><p>KSh 20 for 2 Credits</p><button class="ask-btn">Pay via M-Pesa</button></div>`;
+        } catch (e) { resDiv.innerHTML = "Error. Try again."; }
+    }
 
-            if (!data || !data.summary || data.summary.length < 5) {
-                resDiv.innerHTML = `<div style="text-align:center; padding:20px; background:#fff5f5; color:#c53030; border-radius:12px;">⚠️ Something went wrong. Please try again.</div>`;
-                return;
-            }
+    // GAME LOGIC
+    function startGame(path) {
+        activePath = path;
+        gameLives = 3;
+        gameScore = 0;
+        updateGameUI();
+        gameCycle('START');
+    }
 
-            if (data.status === "premium") {
-                resDiv.innerHTML = `<div class="credits-badge">🎟️ ${data.credits_left} remaining</div><div class="premium-content"><h3>📋 Full Deep-Dive Result</h3>${data.content.replace(/\n/g, '<br>')}</div>`;
-                if (data.credits_left === 0) clearPaidId();
-                else if (activeId) savePaidId(activeId);
-                resDiv.scrollIntoView({ behavior: 'smooth' });
-            } else {
-                resDiv.innerHTML = `<div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div><div class="paywall"><h4>🔒 Unlock Detailed Sections</h4><p>Get 2 Analysis for KSh 20</p><input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; max-width:280px; margin-bottom:12px; border:1px solid #ccc; border-radius:8px;"><br><button class="ask-btn" id="payBtn" onclick="pay()">Pay via M-Pesa</button><div id="pStat" style="margin-top:10px; font-weight:600;"></div></div>`;
-            }
-        } catch (e) { if (e.name !== 'AbortError') resDiv.innerHTML = "Something went wrong."; }
-        finally { btn.disabled = false; }
+    function updateGameUI() {
+        document.getElementById("lives").innerText = "💰".repeat(gameLives);
+        const ranks = ["Common Mwananchi", "Street Lawyer", "Constitution Guard", "Sheria Chief Justice"];
+        document.getElementById("rank").innerText = ranks[Math.min(Math.floor(gameScore/2), 3)];
     }
 
     async function gameCycle(input) {
         const text = document.getElementById("gameText");
         const controls = document.getElementById("gameControls");
-        text.innerHTML = "⏳ Thinking...";
+        const body = document.getElementById("gameBody");
+
+        text.innerHTML = "⏳ Generating scenario...";
         controls.innerHTML = "";
-        const payloadQ = (input === 'START') ? "START" : `I choose ${input}. Question was: ${lastGameQ}`;
+
+        const payloadQ = (input === 'START') ? `NEW GAME in ${activePath}` : `I choose ${input}. The question was: ${lastGameQ}`;
+
         try {
             const res = await fetch(`${API}/ask-ai`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ question: payloadQ, category: "game" }) });
             const data = await res.json();
-            text.innerHTML = data.summary.replace(/\n/g, '<br>');
-            if (input === 'START' || input.includes('Next')) {
-                lastGameQ = data.summary;
-                controls.innerHTML = `<button class="quiz-option" onclick="gameCycle('Option A')">A</button><button class="quiz-option" onclick="gameCycle('Option B')">B</button><button class="quiz-option" onclick="gameCycle('Option C')">C</button>`;
-            } else {
-                controls.innerHTML = `<button class="ask-btn" style="margin-top:10px;" onclick="gameCycle('START')">Next Challenge ⏭️</button>`;
+            
+            // Result Feedback
+            if (input !== 'START') {
+                if (data.summary.toUpperCase().includes("CORRECT")) {
+                    gameScore++;
+                    body.classList.add("flash-correct");
+                    setTimeout(() => body.classList.remove("flash-correct"), 1000);
+                } else {
+                    gameLives--;
+                    body.classList.add("flash-wrong");
+                    setTimeout(() => body.classList.remove("flash-wrong"), 1000);
+                }
+                updateGameUI();
             }
-        } catch (e) { text.innerHTML = "Connection error. Try again."; }
-    }
 
-    async function pay() {
-        const pInput = document.getElementById("phone").value;
-        const pStat = document.getElementById("pStat");
-        if(!pInput) return alert("Enter number");
-        if (poller) clearInterval(poller);
-        pStat.innerText = "⏳ Initializing STK Push...";
-        try {
-            const res = await fetch(`${API}/stkpush`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ phone: pInput }) });
-            const data = await res.json();
-            if (!data.checkout_id) { pStat.innerText = "❌ Failed."; return; }
-            pStat.innerText = "📩 Prompt sent! Enter PIN on your phone...";
-            poller = setInterval(async () => {
-                const check = await fetch(`${API}/check-payment/${data.checkout_id}`);
-                const r = await check.json();
-                if (r.status === "paid") { clearInterval(poller); pStat.innerText = "✅ Paid!"; savePaidId(data.checkout_id); askAi(data.checkout_id); }
-            }, 4000);
-        } catch (e) { pStat.innerText = "❌ Network error."; }
+            if (gameLives <= 0) {
+                text.innerHTML = "💸 <strong>Game Over!</strong> You've been cleaned out by bribes. Better luck next time!";
+                controls.innerHTML = `<button class="ask-btn" onclick="location.reload()">Reset Game 🔄</button>`;
+                return;
+            }
+
+            text.innerHTML = data.summary.replace(/\n/g, '<br>');
+            lastGameQ = data.summary;
+
+            if (input === 'START' || !data.summary.includes('?')) {
+                controls.innerHTML = `<button class="game-opt" onclick="gameCycle('Option A')">A</button><button class="game-opt" onclick="gameCycle('Option B')">B</button><button class="game-opt" onclick="gameCycle('Option C')">C</button>`;
+            } else {
+                controls.innerHTML = `<button class="ask-btn" onclick="gameCycle('START')">Next Challenge ⏭️</button>`;
+            }
+        } catch (e) { text.innerHTML = "Server connection lost. Try again."; }
     }
 </script>
 </body>
