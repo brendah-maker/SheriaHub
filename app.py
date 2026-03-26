@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from groq import Groq
@@ -44,12 +45,12 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 @app.route('/')
 @app.route('/health')
 def health():
-    return jsonify({"status": "Healthy"}), 200
+    return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
 
-# --- 3. ROBUST GAME & AI LOGIC ---
+# --- 3. ROBUST AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    if not client: return jsonify({"error": "AI Offline"}), 500
+    if not client: return jsonify({"error": "AI not ready"}), 500
     try:
         data = request.get_json()
         question = data.get("question", "")
@@ -69,17 +70,16 @@ def ask_ai():
 
         if category == "game":
             system_msg = (
-                "You are the 'Sheria Survival Master'. Kenyan street law scenarios. "
-                "YOU MUST RESPOND ONLY IN JSON. "
-                "If starting: {'type': 'question', 'text': 'Scenario text', 'a': 'option', 'b': 'option', 'c': 'option'}. "
-                "If grading: {'type': 'result', 'correct': true/false, 'reaction': 'funny text', 'explanation': 'law text'}. "
-                "Ensure 'type' is always present."
+                "You are the 'Sheria Survival Master'. Kenyan legal scenarios. "
+                "YOU MUST RESPOND ONLY WITH A RAW JSON OBJECT. NO MARKDOWN. NO BACKTICKS. "
+                "Scenario Type: {'type': 'question', 'text': '...', 'a': '...', 'b': '...', 'c': '...'} "
+                "Result Type: {'type': 'result', 'correct': true/false, 'reaction': '...', 'explanation': '...'} "
             )
             response_format = {"type": "json_object"}
         else:
             law_map = {
                 "employment": "Employment Law", "land": "Land Law", "family": "Family Law",
-                "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil & Criminal Law"
+                "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil/Criminal Law"
             }
             system_msg = f"Kenyan Legal Expert on {law_map.get(category, 'Law')}. Format: SUMMARY: [text] DEEP_DIVE: [text]"
             response_format = None
@@ -93,7 +93,9 @@ def ask_ai():
         ai_resp = completion.choices[0].message.content
 
         if category == "game":
-            return jsonify(json.loads(ai_resp))
+            # CLEANER: Remove markdown if AI accidentally includes it
+            cleaned_json = re.sub(r'```json\s*|\s*```', '', ai_resp).strip()
+            return jsonify(json.loads(cleaned_json))
         else:
             clean_txt = ai_resp.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
             if "DEEP_DIVE:" in clean_txt:
@@ -103,18 +105,26 @@ def ask_ai():
             else:
                 summary = ai_resp.split('.')[0] + "."
                 content = ai_resp
-
-            return jsonify({
-                "status": "premium" if is_paid else "free",
-                "credits_left": credits_left,
-                "summary": summary,
-                "content": content
-            })
+            return jsonify({"status": "premium" if is_paid else "free", "credits_left": credits_left, "summary": summary, "content": content})
 
     except Exception as e:
+        print(f"ERROR: {e}")
         return jsonify({"error": str(e)}), 500
 
-# (Keep standard STK, Callback, Check_payment routes below)
+# --- 4. CALLBACK & PAYMENTS ---
+@app.route('/api/callback', methods=['POST'])
+def callback():
+    try:
+        data = request.get_json()
+        inv_id = data.get("invoice_id")
+        if inv_id and data.get("state") == "COMPLETE":
+            p = Payment.query.get(inv_id)
+            if not p: db.session.add(Payment(id=inv_id, status="paid", credits=2))
+            else: p.status = "paid"; p.credits = 2
+            db.session.commit()
+        return jsonify({"ok": True}), 200
+    except: return jsonify({"ok": False}), 500
+
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
@@ -123,22 +133,13 @@ def stk_push():
         if phone.startswith("0"): phone = "254" + phone[1:]
         payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers={"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"})
-        inv_id = res.json().get("invoice", {}).get("invoice_id")
-        if inv_id:
+        res_data = res.json()
+        if res.status_code == 200:
+            inv_id = res_data.get("invoice", {}).get("invoice_id")
             db.session.add(Payment(id=inv_id, status="pending", credits=0)); db.session.commit()
             return jsonify({"checkout_id": inv_id})
         return jsonify({"error": "Failed"}), 400
     except Exception as e: return jsonify({"error": str(e)}), 500
-
-@app.route('/api/callback', methods=['POST'])
-def callback():
-    data = request.get_json()
-    if data.get("invoice_id") and data.get("state") == "COMPLETE":
-        p = Payment.query.get(data.get("invoice_id"))
-        if not p: db.session.add(Payment(id=data.get("invoice_id"), status="paid", credits=2))
-        else: p.status = "paid"; p.credits = 2
-        db.session.commit()
-    return jsonify({"ok": True}), 200
 
 @app.route('/check-payment/<id>')
 def check_payment(id):
