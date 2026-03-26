@@ -42,19 +42,20 @@ BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 @app.route('/')
+@app.route('/health')
 def health():
     return jsonify({"status": "Healthy"}), 200
 
-# --- 3. THE FIXED AI LOGIC ---
+# --- 3. ROBUST GAME & AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    if not client: return jsonify({"error": "AI not ready"}), 500
+    if not client: return jsonify({"error": "AI Offline"}), 500
     try:
         data = request.get_json()
         question = data.get("question", "")
         category = data.get("category", "tenant")
         checkout_id = data.get("checkout_id")
-        
+
         is_paid = False
         credits_left = 0
 
@@ -67,22 +68,20 @@ def ask_ai():
                 db.session.commit()
 
         if category == "game":
-            # FORCING JSON MODE FOR THE GAME
             system_msg = (
-                "You are the 'Sheria Survival Master'. "
-                "Respond ONLY in valid JSON format. "
-                "If user says 'START', provide a scenario for the chosen path. "
-                "JSON Schema for Question: {'type': 'question', 'text': '...', 'a': '...', 'b': '...', 'c': '...'}. "
-                "JSON Schema for Result: {'type': 'result', 'correct': true/false, 'explanation': '...', 'reaction': '...'}. "
-                "Strictly adhere to the survival path requested."
+                "You are the 'Sheria Survival Master'. Kenyan street law scenarios. "
+                "YOU MUST RESPOND ONLY IN JSON. "
+                "If starting: {'type': 'question', 'text': 'Scenario text', 'a': 'option', 'b': 'option', 'c': 'option'}. "
+                "If grading: {'type': 'result', 'correct': true/false, 'reaction': 'funny text', 'explanation': 'law text'}. "
+                "Ensure 'type' is always present."
             )
             response_format = {"type": "json_object"}
         else:
             law_map = {
                 "employment": "Employment Law", "land": "Land Law", "family": "Family Law",
-                "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil/Criminal Law"
+                "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil & Criminal Law"
             }
-            system_msg = f"Expert in {law_map.get(category, 'Law')}. Format: SUMMARY: [text] DEEP_DIVE: [text]"
+            system_msg = f"Kenyan Legal Expert on {law_map.get(category, 'Law')}. Format: SUMMARY: [text] DEEP_DIVE: [text]"
             response_format = None
 
         completion = client.chat.completions.create(
@@ -94,7 +93,6 @@ def ask_ai():
         ai_resp = completion.choices[0].message.content
 
         if category == "game":
-            # We return the raw JSON object to the frontend
             return jsonify(json.loads(ai_resp))
         else:
             clean_txt = ai_resp.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
@@ -116,7 +114,7 @@ def ask_ai():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# (Keep M-Pesa routes - callback, stkpush, check_payment as they were)
+# (Keep standard STK, Callback, Check_payment routes below)
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
@@ -125,8 +123,7 @@ def stk_push():
         if phone.startswith("0"): phone = "254" + phone[1:]
         payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers={"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"})
-        res_data = res.json()
-        inv_id = res_data.get("invoice", {}).get("invoice_id")
+        inv_id = res.json().get("invoice", {}).get("invoice_id")
         if inv_id:
             db.session.add(Payment(id=inv_id, status="pending", credits=0)); db.session.commit()
             return jsonify({"checkout_id": inv_id})
@@ -158,5 +155,4 @@ def check_payment(id):
     return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
