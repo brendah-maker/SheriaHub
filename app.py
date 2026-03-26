@@ -10,7 +10,7 @@ from sqlalchemy import text
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- 1. DATABASE CONFIGURATION ---
+# --- 1. DATABASE ---
 uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
 if uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -24,7 +24,6 @@ class Payment(db.Model):
     status = db.Column(db.String(20), default="pending")
     credits = db.Column(db.Integer, default=0)
 
-# Self-Healing DB Script
 with app.app_context():
     db.create_all()
     try:
@@ -44,9 +43,9 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 @app.route('/')
 def health():
-    return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
+    return jsonify({"status": "Healthy"}), 200
 
-# --- 3. AI LOGIC (SURVIVAL GAME EDITION) ---
+# --- 3. THE FIXED AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client: return jsonify({"error": "AI not ready"}), 500
@@ -55,11 +54,10 @@ def ask_ai():
         question = data.get("question", "")
         category = data.get("category", "tenant")
         checkout_id = data.get("checkout_id")
-
+        
         is_paid = False
         credits_left = 0
 
-        # Credit Logic
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if payment and payment.status == "paid" and payment.credits > 0:
@@ -68,50 +66,53 @@ def ask_ai():
                 credits_left = payment.credits
                 db.session.commit()
 
-        # Handle Survival Game Mode
         if category == "game":
+            # FORCING JSON MODE FOR THE GAME
             system_msg = (
-                "You are the 'Sheria Survival Master'. Kenyan legal street scenarios. "
-                "PATHS: 1. Street Smarts (Kanjo/Police), 2. Tenant Trials (Landlords/Agencies), 3. Office Survival (HR/Dismissals). "
-                "1. If 'NEW GAME', provide 1 realistic scenario for that path with 3 MCQ options (a, b, c). "
-                "2. If answer given, start with 'CORRECT! ✅' or 'WRONG! ❌'. "
-                "3. If wrong, give a funny comment about paying a bribe/losing money. "
-                "4. Always explain the actual Kenyan law clearly. Be witty and use Sheng."
+                "You are the 'Sheria Survival Master'. "
+                "Respond ONLY in valid JSON format. "
+                "If user says 'START', provide a scenario for the chosen path. "
+                "JSON Schema for Question: {'type': 'question', 'text': '...', 'a': '...', 'b': '...', 'c': '...'}. "
+                "JSON Schema for Result: {'type': 'result', 'correct': true/false, 'explanation': '...', 'reaction': '...'}. "
+                "Strictly adhere to the survival path requested."
             )
+            response_format = {"type": "json_object"}
         else:
             law_map = {
                 "employment": "Employment Law", "land": "Land Law", "family": "Family Law",
-                "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil & Criminal Law"
+                "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil/Criminal Law"
             }
-            system_msg = f"Kenyan Legal Expert on {law_map.get(category, 'Law')}. Format: SUMMARY: [text] DEEP_DIVE: [text]"
+            system_msg = f"Expert in {law_map.get(category, 'Law')}. Format: SUMMARY: [text] DEEP_DIVE: [text]"
+            response_format = None
 
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
-            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": question}]
+            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": question}],
+            response_format=response_format
         )
         
-        full_text = completion.choices[0].message.content
+        ai_resp = completion.choices[0].message.content
 
-        # Handle splitting for Consultation Mode
-        if category != "game":
-            clean_txt = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
+        if category == "game":
+            # We return the raw JSON object to the frontend
+            return jsonify(json.loads(ai_resp))
+        else:
+            clean_txt = ai_resp.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
             if "DEEP_DIVE:" in clean_txt:
                 parts = clean_txt.split("DEEP_DIVE:")
                 summary = parts[0].replace("SUMMARY:", "").strip()
                 content = parts[1].strip()
             else:
-                summary = full_text.split('.')[0] + "."
-                content = full_text
-        else:
-            summary = full_text
-            content = "Game Mode Active"
+                summary = ai_resp.split('.')[0] + "."
+                content = ai_resp
 
-        return jsonify({
-            "status": "premium" if (is_paid or category == "game") else "free",
-            "credits_left": credits_left,
-            "summary": summary,
-            "content": content
-        })
+            return jsonify({
+                "status": "premium" if is_paid else "free",
+                "credits_left": credits_left,
+                "summary": summary,
+                "content": content
+            })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -124,7 +125,8 @@ def stk_push():
         if phone.startswith("0"): phone = "254" + phone[1:]
         payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers={"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"})
-        inv_id = res.json().get("invoice", {}).get("invoice_id")
+        res_data = res.json()
+        inv_id = res_data.get("invoice", {}).get("invoice_id")
         if inv_id:
             db.session.add(Payment(id=inv_id, status="pending", credits=0)); db.session.commit()
             return jsonify({"checkout_id": inv_id})
@@ -156,4 +158,5 @@ def check_payment(id):
     return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
