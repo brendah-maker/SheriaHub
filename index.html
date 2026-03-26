@@ -145,7 +145,7 @@
             <div id="res"></div>
         </main>
 
-        <!-- SEO Content Section -->
+        <!-- Practice Areas Section -->
         <section class="info-section">
             <h2 class="section-title">Practice Areas Covered</h2>
             <div class="practice-grid">
@@ -300,7 +300,7 @@
                     <div class="paywall">
                         <h4>🔒 Unlock Detailed Legal Sections</h4>
                         <p>Get <strong>2 Full Legal Analysis</strong> credits for <strong>KSh 20</strong></p>
-                        <input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; max-width:280px; margin-bottom:12px; border-radius:8px; border:1px solid #ccc;"><br>
+                        <input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; max-width:280px; margin-bottom:12px; border:1px solid #ccc; border-radius:8px;"><br>
                         <button class="ask-btn" style="background:var(--gold);color:black;max-width:280px;" id="payBtn" onclick="pay()">Pay via M-Pesa</button>
                         <div id="pStat" style="margin-top:12px; font-weight:600;"></div>
                     </div>`;
@@ -313,10 +313,10 @@
     // --- SURVIVAL GAME LOGIC ---
     function startSurvival(path) {
         activePath = path; gameLives = 3; gameScore = 0;
-        updateUI(); gameCycle('START');
+        updateSurvivalUI(); gameCycle('START');
     }
 
-    function updateUI() { 
+    function updateSurvivalUI() { 
         document.getElementById("lives").innerText = "💰".repeat(gameLives);
         const ranks = ["Common Mwananchi", "Street Lawyer", "Constitution Guard", "Sheria Chief Justice"];
         document.getElementById("rank").innerText = ranks[Math.min(Math.floor(gameScore/2), 3)];
@@ -326,26 +326,38 @@
         const text = document.getElementById("gameText");
         const controls = document.getElementById("gameControls");
         const body = document.getElementById("gameBody");
-        text.innerHTML = "⏳ Initializing Challenge...";
+        text.innerHTML = "⏳ Thinking...";
         controls.innerHTML = "";
 
         const payload = (input === 'START') ? `START Survival Path: ${activePath}` : `I choose ${input}. Prev Scenario: ${lastScenarioText}`;
-        const controller = new AbortController();
-        const tId = setTimeout(() => { controller.abort(); text.innerHTML = "❌ Time out. Try again."; }, 50000);
 
         try {
-            const r = await fetch(`${API}/ask-ai`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ question: payload, category: "game" }), signal: controller.signal });
-            clearTimeout(tId);
+            const r = await fetch(`${API}/ask-ai`, { 
+                method: "POST", 
+                headers: {"Content-Type":"application/json"}, 
+                body: JSON.stringify({ question: payload, category: "game" }) 
+            });
             const data = await r.json();
             
             if (data.type === "question") {
                 lastScenarioText = data.text;
                 text.innerHTML = `<strong>SCENARIO:</strong><br>${data.text}<br><br>A: ${data.a}<br>B: ${data.b}<br>C: ${data.c}`;
-                controls.innerHTML = `<button class="game-opt" onclick="gameCycle('A')">A</button><button class="game-opt" onclick="gameCycle('B')">B</button><button class="game-opt" onclick="gameCycle('C')">C</button>`;
+                controls.innerHTML = `
+                    <button class="game-opt" onclick="gameCycle('A')">A</button>
+                    <button class="game-opt" onclick="gameCycle('B')">B</button>
+                    <button class="game-opt" onclick="gameCycle('C')">C</button>
+                `;
             } else if (data.type === "result") {
-                if (data.correct) { gameScore++; body.classList.add("flash-correct"); setTimeout(() => body.classList.remove("flash-correct"), 800); }
-                else { gameLives--; body.classList.add("flash-wrong"); setTimeout(() => body.classList.remove("flash-wrong"), 800); }
-                updateUI();
+                if (data.correct) { 
+                    gameScore++; 
+                    body.classList.add("flash-correct"); 
+                    setTimeout(() => body.classList.remove("flash-correct"), 800); 
+                } else { 
+                    gameLives--; 
+                    body.classList.add("flash-wrong"); 
+                    setTimeout(() => body.classList.remove("flash-wrong"), 800); 
+                }
+                updateSurvivalUI();
 
                 if (gameLives <= 0) {
                     text.innerHTML = "💸 <strong>Game Over!</strong> Out of cash. Nairobi streets are tough!";
