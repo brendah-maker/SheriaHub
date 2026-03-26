@@ -69,35 +69,46 @@
         .premium-content { background: #f0fff4; border: 2px solid #38a169; padding: 30px; border-radius: 15px; margin-top: 25px; line-height: 1.8; text-align: left; white-space: pre-wrap; }
         .credits-badge { background: var(--gold); padding: 6px 14px; border-radius: 8px; font-weight: 700; display: inline-block; margin-bottom: 12px; font-size: 0.85rem; }
 
-        /* SEO Sections */
-        .info-section { padding: 60px 5%; max-width: 1200px; margin: 0 auto; }
+        /* SEO Sections (FAQ, Info) */
+        .info-section { padding: 60px 5%; max-width: 1100px; margin: 0 auto; }
         .section-title { text-align: center; margin-bottom: 40px; color: var(--navy); }
+        
         .practice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-bottom: 60px; }
         .practice-box { background: white; padding: 25px; border-radius: 15px; border-top: 4px solid var(--gold); box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
         .practice-box h3 { margin-top: 0; font-size: 1.2rem; color: var(--navy); }
+
         .faq-container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
         .faq-item { border-bottom: 1px solid #edf2f7; padding: 15px 0; }
-        .faq-q { font-weight: 600; color: var(--navy); }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-q { font-weight: 600; color: var(--navy); cursor: pointer; display: flex; justify-content: space-between; }
+        .faq-a { font-size: 0.95rem; margin-top: 10px; color: #4a5568; }
 
         /* SURVIVAL GAME WIDGET STYLING */
-        .widget-bubble { position: fixed; bottom: 30px; right: 30px; background: var(--gold); width: 65px; height: 65px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2rem; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 2000; transition: 0.3s; }
+        .widget-bubble { position: fixed; bottom: 30px; right: 30px; background: var(--gold); width: 65px; height: 65px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2.2rem; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 2000; transition: 0.3s; }
         .widget-bubble:hover { transform: scale(1.1); }
         .widget-window { position: fixed; bottom: 110px; right: 30px; width: 350px; height: 500px; background: white; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.15); display: none; flex-direction: column; z-index: 2001; border: 1px solid #e2e8f0; overflow: hidden; animation: slideUp 0.3s ease; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .widget-header { background: var(--navy); color: white; padding: 15px; display: flex; justify-content: space-between; font-weight: 700; }
         .widget-body { flex: 1; padding: 20px; overflow-y: auto; background: #fcfcfc; transition: background 0.4s; font-size: 0.9rem; }
-        .game-opt { width: 100%; padding: 12px; margin-top: 8px; border-radius: 10px; border: 1px solid #ddd; background: white; cursor: pointer; text-align: left; font-weight: 600; }
+        .game-opt { width: 100%; padding: 12px; margin-top: 8px; border-radius: 10px; border: 1px solid #ddd; background: white; cursor: pointer; text-align: left; font-weight: 600; transition: 0.2s; }
         .game-opt:hover { border-color: var(--gold); background: #fffcf0; }
-        .bribe-bar { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .bribe-bar { display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; }
         .lvl-tag { background: #e2e8f0; padding: 3px 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; color: var(--navy); }
         .flash-correct { background: #d1fae5 !important; }
         .flash-wrong { background: #fee2e2 !important; }
 
-        .footer { background: var(--navy); color: white; text-align: center; padding: 50px 20px; border-top: 6px solid var(--gold); margin-top: auto; }
+        /* Footer */
+        .footer { background: var(--navy); color: white; text-align: center; padding: 50px 20px; margin-top: auto; border-top: 6px solid var(--gold); }
+        .footer-links { margin-bottom: 20px; display: flex; justify-content: center; gap: 20px; font-size: 0.9rem; }
+        .footer-links a { color: white; text-decoration: none; opacity: 0.8; }
+        .footer-links a:hover { opacity: 1; color: var(--gold); }
+        .disclaimer { font-size: 0.8rem; opacity: 0.7; max-width: 800px; margin: 20px auto 0; line-height: 1.4; }
 
+        /* Mobile Adaptability */
         @media (max-width: 600px) {
             .hero { padding: 40px 15px 80px; }
             .hero h1 { font-size: 1.6rem; }
+            .hero p { font-size: 0.95rem; }
             .category-selector { margin-top: -50px; gap: 8px; }
             .cat-btn { font-size: 0.75rem; padding: 10px 14px; }
             .widget-window { width: 90%; right: 5%; bottom: 100px; }
@@ -134,24 +145,48 @@
             <div id="res"></div>
         </main>
 
-        <!-- SEO/FAQ Sections -->
+        <!-- SEO Content Section -->
         <section class="info-section">
             <h2 class="section-title">Practice Areas Covered</h2>
             <div class="practice-grid">
-                <div class="practice-box"><h3>Employment Act 2007</h3><p>Guidance on wrongful dismissal, summary termination, and leave rights.</p></div>
-                <div class="practice-box"><h3>Rent Restriction Act</h3><p>Understanding rent increases, deposit refunds, and lawful evictions.</p></div>
-                <div class="practice-box"><h3>Penal Code Cap 63</h3><p>Insights into criminal offenses, rights upon arrest, and police bond.</p></div>
-                <div class="practice-box"><h3>Children Act 2022</h3><p>Information on child maintenance, custody rights, and protection.</p></div>
+                <div class="practice-box">
+                    <h3>Employment Act 2007</h3>
+                    <p>Guidance on wrongful dismissal, summary termination, leave rights, and contract disputes in the Kenyan workplace.</p>
+                </div>
+                <div class="practice-box">
+                    <h3>Rent Restriction Act</h3>
+                    <p>Understanding landlord-tenant relationships, rent increases, deposit refunds, and lawful eviction procedures.</p>
+                </div>
+                <div class="practice-box">
+                    <h3>Penal Code Cap 63</h3>
+                    <p>Insights into criminal offenses, rights upon arrest (Article 49), police bond, and malicious damage to property.</p>
+                </div>
+                <div class="practice-box">
+                    <h3>Children Act 2022</h3>
+                    <p>Information on child maintenance, custody rights, and the legal welfare of minors in Kenya.</p>
+                </div>
             </div>
 
             <h2 class="section-title">Frequently Asked Questions</h2>
             <div class="faq-container">
-                <div class="faq-item"><div class="faq-q">Can a landlord increase rent without notice in Kenya?</div><div style="margin-top:10px; font-size:0.95rem; color:#4a5568;">No. Under the Rent Restriction Act, a landlord must provide at least one month's written notice.</div></div>
-                <div class="faq-item"><div class="faq-q">How long can police hold you without court?</div><div style="margin-top:10px; font-size:0.95rem; color:#4a5568;">Article 49 of the Constitution requires a person to be brought to court within 24 hours.</div></div>
+                <div class="faq-item">
+                    <div class="faq-q">Can a landlord increase rent without notice in Kenya? <span>+</span></div>
+                    <div class="faq-a">Under the Rent Restriction Act, a landlord must provide at least one month's written notice before increasing rent, and such increases must follow legal guidelines.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-q">What is the penalty for summary dismissal? <span>+</span></div>
+                    <div class="faq-a">Wrongful summary dismissal can lead to the employer being ordered to pay up to 12 months' salary in compensation plus terminal benefits.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-q">How long can police hold you without court? <span>+</span></div>
+                    <div class="faq-a">Article 49 of the Constitution requires an arrested person to be brought before a court within 24 hours of arrest.</div>
+                </div>
             </div>
 
+            <!-- Roadmap Section -->
             <section style="background: #edf2f7; padding: 40px 5%; text-align: center; border-radius: 20px; margin-top: 40px;">
-                <h2 style="color: var(--navy);">🚀 What's Coming Next?</h2>
+                <h2 style="color: var(--navy); margin-bottom: 10px;">🚀 What's Coming Next?</h2>
+                <p style="opacity: 0.8; max-width: 600px; margin: 0 auto 20px;">We are constantly training Sheria AI on more Kenyan statutes to serve you better.</p>
                 <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-top: 20px;">
                     <span style="background: white; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid #cbd5e0;">⚖️ Small Claims Court Filing</span>
                     <span style="background: white; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid #cbd5e0;">📁 Business Registration Guides</span>
@@ -161,15 +196,15 @@
     </div>
 
     <!-- SURVIVAL GAME WIDGET -->
-    <div class="widget-bubble" onclick="toggleWidget()">🏙️</div>
+    <div class="widget-bubble" onclick="toggleWidget()">🎮</div>
     <div id="gameWidget" class="widget-window">
-        <div class="widget-header"><span>Street Smarts: Nairobi Edition</span><span style="cursor:pointer;" onclick="toggleWidget()">✕</span></div>
+        <div class="widget-header"><span>Sheria Survival Game</span><span style="cursor:pointer;" onclick="toggleWidget()">✕</span></div>
         <div id="gameBody" class="widget-body">
             <div class="bribe-bar">
                 <span id="lives">💰💰💰</span>
                 <span id="rank" class="lvl-tag">Common Mwananchi</span>
             </div>
-            <p id="gameText">Can you survive the streets of Nairobi without paying a bribe? Select a path:</p>
+            <p id="gameText">Can you survive the streets of Nairobi without paying a bribe? Select your survival path to begin:</p>
             <div id="gameControls">
                 <button class="game-opt" onclick="startSurvival('Street Smarts')">🏙️ Street Smarts (Kanjo/Police)</button>
                 <button class="game-opt" onclick="startSurvival('Tenant Trials')">🏠 Tenant Trials (Landlords)</button>
@@ -179,8 +214,16 @@
     </div>
 
     <footer class="footer">
+        <div class="footer-links">
+            <a href="#">About Us</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Privacy Policy</a>
+            <a href="#">Contact</a>
+        </div>
         <p>© 2026 SheriaHub Kenya | Built for Justice</p>
-        <p style="font-size: 0.8rem; opacity: 0.7;">Disclaimer: AI information tool, not professional legal advice.</p>
+        <p class="disclaimer">
+            <strong>Disclaimer:</strong> SheriaHub is an AI information tool. It provides general information based on Kenyan Statutes and does not constitute professional legal advice.
+        </p>
     </footer>
 
 <script>
@@ -205,11 +248,10 @@
         cat = c;
         document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`btn-${c}`).classList.add('active');
-        const placeholders = { tenant: "Ask about rent...", employment: "Ask about dismissal...", land: "Ask about titles...", family: "Ask about custody...", traffic: "Ask about fines...", civil_criminal: "Ask about theft..." };
+        const placeholders = { tenant: "Ask about rent, deposits, or evictions...", employment: "Ask about dismissal or leave...", land: "Ask about title deeds or land searches...", family: "Ask about child maintenance, custody, or divorce...", traffic: "Ask about traffic fines or accidents...", civil_criminal: "Ask about theft, assault, or damage..." };
         document.getElementById("q").placeholder = placeholders[c];
     }
 
-    // --- MAIN LEGAL AI ---
     async function askAi(checkId = null) {
         const qInput = document.getElementById("q");
         const resDiv = document.getElementById("res");
@@ -220,7 +262,7 @@
         lastQ = question;
 
         btn.disabled = true;
-        resDiv.innerHTML = `<p style="text-align:center;">⚖️ Sheria AI is analyzing Kenyan Law...</p>`;
+        resDiv.innerHTML = `<p style="text-align:center;">⏳ Sheria AI is analyzing Kenyan Law...</p>`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
@@ -258,7 +300,7 @@
                     <div class="paywall">
                         <h4>🔒 Unlock Detailed Legal Sections</h4>
                         <p>Get <strong>2 Full Legal Analysis</strong> credits for <strong>KSh 20</strong></p>
-                        <input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; max-width:280px; margin-bottom:12px; border:1px solid #ccc; border-radius:8px;"><br>
+                        <input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; max-width:280px; margin-bottom:12px; border-radius:8px; border:1px solid #ccc;"><br>
                         <button class="ask-btn" style="background:var(--gold);color:black;max-width:280px;" id="payBtn" onclick="pay()">Pay via M-Pesa</button>
                         <div id="pStat" style="margin-top:12px; font-weight:600;"></div>
                     </div>`;
@@ -270,14 +312,11 @@
 
     // --- SURVIVAL GAME LOGIC ---
     function startSurvival(path) {
-        activePath = path;
-        gameLives = 3;
-        gameScore = 0;
-        updateSurvivalUI();
-        gameCycle('START');
+        activePath = path; gameLives = 3; gameScore = 0;
+        updateUI(); gameCycle('START');
     }
 
-    function updateSurvivalUI() {
+    function updateUI() { 
         document.getElementById("lives").innerText = "💰".repeat(gameLives);
         const ranks = ["Common Mwananchi", "Street Lawyer", "Constitution Guard", "Sheria Chief Justice"];
         document.getElementById("rank").innerText = ranks[Math.min(Math.floor(gameScore/2), 3)];
@@ -287,42 +326,30 @@
         const text = document.getElementById("gameText");
         const controls = document.getElementById("gameControls");
         const body = document.getElementById("gameBody");
-        text.innerHTML = "⏳ Thinking...";
+        text.innerHTML = "⏳ Initializing Challenge...";
         controls.innerHTML = "";
 
-        const payload = (input === 'START') ? `START Survival Path: ${activePath}` : `I choose ${input}. Prev scenario: ${lastScenarioText}`;
+        const payload = (input === 'START') ? `START Survival Path: ${activePath}` : `I choose ${input}. Prev Scenario: ${lastScenarioText}`;
+        const controller = new AbortController();
+        const tId = setTimeout(() => { controller.abort(); text.innerHTML = "❌ Time out. Try again."; }, 50000);
 
         try {
-            const r = await fetch(`${API}/ask-ai`, { 
-                method: "POST", 
-                headers: {"Content-Type":"application/json"}, 
-                body: JSON.stringify({ question: payload, category: "game" }) 
-            });
+            const r = await fetch(`${API}/ask-ai`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ question: payload, category: "game" }), signal: controller.signal });
+            clearTimeout(tId);
             const data = await r.json();
             
             if (data.type === "question") {
                 lastScenarioText = data.text;
                 text.innerHTML = `<strong>SCENARIO:</strong><br>${data.text}<br><br>A: ${data.a}<br>B: ${data.b}<br>C: ${data.c}`;
-                controls.innerHTML = `
-                    <button class="game-opt" onclick="gameCycle('A')">A</button>
-                    <button class="game-opt" onclick="gameCycle('B')">B</button>
-                    <button class="game-opt" onclick="gameCycle('C')">C</button>
-                `;
+                controls.innerHTML = `<button class="game-opt" onclick="gameCycle('A')">A</button><button class="game-opt" onclick="gameCycle('B')">B</button><button class="game-opt" onclick="gameCycle('C')">C</button>`;
             } else if (data.type === "result") {
-                if (data.correct) { 
-                    gameScore++; 
-                    body.classList.add("flash-correct"); 
-                    setTimeout(() => body.classList.remove("flash-correct"), 800); 
-                } else { 
-                    gameLives--; 
-                    body.classList.add("flash-wrong"); 
-                    setTimeout(() => body.classList.remove("flash-wrong"), 800); 
-                }
-                updateSurvivalUI();
+                if (data.correct) { gameScore++; body.classList.add("flash-correct"); setTimeout(() => body.classList.remove("flash-correct"), 800); }
+                else { gameLives--; body.classList.add("flash-wrong"); setTimeout(() => body.classList.remove("flash-wrong"), 800); }
+                updateUI();
 
                 if (gameLives <= 0) {
-                    text.innerHTML = "💸 <strong>Game Over!</strong> Out of cash. The streets won this time.";
-                    controls.innerHTML = `<button class="ask-btn" onclick="location.reload()">Retry Path 🔄</button>`;
+                    text.innerHTML = "💸 <strong>Game Over!</strong> Out of cash. Nairobi streets are tough!";
+                    controls.innerHTML = `<button class="ask-btn" onclick="startSurvival('${activePath}')">Retry Path 🔄</button>`;
                 } else {
                     text.innerHTML = `${data.correct ? "CORRECT! ✅" : "WRONG! ❌"}<br><br>${data.reaction}<br><br>${data.explanation}`;
                     controls.innerHTML = `<button class="ask-btn" onclick="gameCycle('START')">Next Challenge ⏭️</button>`;
