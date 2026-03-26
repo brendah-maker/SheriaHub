@@ -1,7 +1,6 @@
 import os
 import json
 import requests
-import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from groq import Groq
@@ -11,7 +10,7 @@ from sqlalchemy import text
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- 1. DATABASE ---
+# --- 1. DATABASE CONFIGURATION ---
 uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
 if uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -25,6 +24,7 @@ class Payment(db.Model):
     status = db.Column(db.String(20), default="pending")
     credits = db.Column(db.Integer, default=0)
 
+# Self-Healing DB Script
 with app.app_context():
     db.create_all()
     try:
@@ -33,7 +33,7 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
-# --- 2. CONFIG ---
+# --- 2. API KEYS ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY", "").strip()
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY", "").strip()
@@ -43,14 +43,13 @@ BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 @app.route('/')
-@app.route('/health')
 def health():
     return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
 
-# --- 3. THE AI BRAIN ---
+# --- 3. AI LOGIC (SURVIVAL GAME EDITION) ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    if not client: return jsonify({"error": "AI offline"}), 500
+    if not client: return jsonify({"error": "AI not ready"}), 500
     try:
         data = request.get_json()
         question = data.get("question", "")
@@ -60,59 +59,63 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
+        # Credit Logic
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
-            if not payment: # Sync fallback
-                try:
-                    res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers={"Authorization": f"Bearer {INTASEND_SECRET_KEY}"})
-                    if res.json().get("invoice", {}).get("state") == "COMPLETE":
-                        payment = Payment(id=checkout_id, status="paid", credits=2)
-                        db.session.add(payment); db.session.commit()
-                except: pass
-
             if payment and payment.status == "paid" and payment.credits > 0:
                 is_paid = True
                 payment.credits -= 1
                 credits_left = payment.credits
                 db.session.commit()
 
+        # Handle Survival Game Mode
         if category == "game":
             system_msg = (
-                "You are the host of 'Street Smarts: Nairobi Edition'. "
-                "Scenario focus: Nairobi County By-laws and basic constitutional rights. "
-                "1. If 'START', give 1 street scenario (Kanjo arrest, ID check, etc) with 3 options: A, B, C. "
-                "2. If an answer is given, tell them if CORRECT/WRONG with a funny reaction and 1-sentence legal truth."
+                "You are the 'Sheria Survival Master'. Kenyan legal street scenarios. "
+                "PATHS: 1. Street Smarts (Kanjo/Police), 2. Tenant Trials (Landlords/Agencies), 3. Office Survival (HR/Dismissals). "
+                "1. If 'NEW GAME', provide 1 realistic scenario for that path with 3 MCQ options (a, b, c). "
+                "2. If answer given, start with 'CORRECT! ✅' or 'WRONG! ❌'. "
+                "3. If wrong, give a funny comment about paying a bribe/losing money. "
+                "4. Always explain the actual Kenyan law clearly. Be witty and use Sheng."
             )
         else:
             law_map = {
                 "employment": "Employment Law", "land": "Land Law", "family": "Family Law",
-                "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil/Criminal Law"
+                "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil & Criminal Law"
             }
-            system_msg = (
-                f"You are a Kenyan legal expert on {law_map.get(category, 'Law')}. "
-                "Rule: Start with 'SUMMARY: ' followed by a 1-sentence overview without Act names. "
-                "Then write 'DEEP_DIVE: ' followed by the citations and steps."
-            )
+            system_msg = f"Kenyan Legal Expert on {law_map.get(category, 'Law')}. Format: SUMMARY: [text] DEEP_DIVE: [text]"
 
-        completion = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": question}])
-        full_text = completion.choices[0].message.content
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant", 
+            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": question}]
+        )
         
-        if category == "game":
-            summary = full_text; content = "Game Active"
-        else:
+        full_text = completion.choices[0].message.content
+
+        # Handle splitting for Consultation Mode
+        if category != "game":
             clean_txt = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
             if "DEEP_DIVE:" in clean_txt:
                 parts = clean_txt.split("DEEP_DIVE:")
                 summary = parts[0].replace("SUMMARY:", "").strip()
                 content = parts[1].strip()
             else:
-                summary = full_text.split('.')[0] + "."; content = full_text
+                summary = full_text.split('.')[0] + "."
+                content = full_text
+        else:
+            summary = full_text
+            content = "Game Mode Active"
 
-        return jsonify({"status": "premium" if (is_paid or category=="game") else "free", "credits_left": credits_left, "summary": summary, "content": content})
+        return jsonify({
+            "status": "premium" if (is_paid or category == "game") else "free",
+            "credits_left": credits_left,
+            "summary": summary,
+            "content": content
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- 4. PAYMENT ROUTES ---
+# (Keep M-Pesa routes - callback, stkpush, check_payment as they were)
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
@@ -121,8 +124,7 @@ def stk_push():
         if phone.startswith("0"): phone = "254" + phone[1:]
         payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers={"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"})
-        res_data = res.json()
-        inv_id = res_data.get("invoice", {}).get("invoice_id")
+        inv_id = res.json().get("invoice", {}).get("invoice_id")
         if inv_id:
             db.session.add(Payment(id=inv_id, status="pending", credits=0)); db.session.commit()
             return jsonify({"checkout_id": inv_id})
@@ -132,10 +134,9 @@ def stk_push():
 @app.route('/api/callback', methods=['POST'])
 def callback():
     data = request.get_json()
-    inv_id = data.get("invoice_id")
-    if inv_id and data.get("state") == "COMPLETE":
-        p = Payment.query.get(inv_id)
-        if not p: db.session.add(Payment(id=inv_id, status="paid", credits=2))
+    if data.get("invoice_id") and data.get("state") == "COMPLETE":
+        p = Payment.query.get(data.get("invoice_id"))
+        if not p: db.session.add(Payment(id=data.get("invoice_id"), status="paid", credits=2))
         else: p.status = "paid"; p.credits = 2
         db.session.commit()
     return jsonify({"ok": True}), 200
@@ -155,5 +156,4 @@ def check_payment(id):
     return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
