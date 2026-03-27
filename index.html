@@ -3,31 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="/sheria.ico" type="image/x-icon">
+    <link rel="icon" href="/sheria.ico" type="image/x-icon">
 
-    <!-- PRIMARY SEO -->
-<title>SheriaHub | AI-Powered Kenyan Legal Intelligence</title>
-<meta name="description" content="Navigate the Laws of Kenya with precision. SheriaHub uses Llama-3 AI to provide instant, simplified legal information for citizens, entrepreneurs, and students.">
+    <!-- PRIMARY SEO & OPEN GRAPH -->
+    <title>SheriaHub | AI-Powered Kenyan Legal Intelligence</title>
+    <meta name="description" content="Navigate the Laws of Kenya with precision. SheriaHub uses Llama-3 AI to provide instant, simplified legal information and contract audits for citizens, entrepreneurs, and students.">
+    <meta name="keywords" content="Kenyan law AI, legal advice Kenya, Employment Act 2007, MkatabaCheck, Housing Levy, SHIF, Tenancy rights, Land Act, Penal Code">
 
-<!-- OPEN GRAPH / LINKEDIN / WHATSAPP -->
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://sheriahub.co.ke/">
-<meta property="og:title" content="SheriaHub | Your AI Legal Partner in Kenya ⚖️">
-<meta property="og:description" content="Democratizing access to justice. Get instant clarity on the Constitution and Acts of Parliament using our specialized AI engine.">
-<!-- A professional gavel/legal image from Unsplash -->
-<meta property="og:image" content="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=2070&auto=format&fit=crop">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://sheriahub.co.ke/">
+    <meta property="og:title" content="SheriaHub | Your AI Legal Partner in Kenya ⚖️">
+    <meta property="og:description" content="Democratizing access to justice. Get instant clarity on the Constitution, Acts of Parliament, and audit your agreements using our specialized AI engine.">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=2070&auto=format&fit=crop">
 
-<!-- TWITTER -->
-<meta property="twitter:card" content="summary_large_image">
-<meta property="twitter:title" content="SheriaHub | Kenyan Law Simplified">
-<meta property="twitter:description" content="Instant AI legal insights grounded in the Laws of Kenya. Knowledge is power.">
-<meta property="twitter:image" content="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=2070&auto=format&fit=crop">
-    
-    <!-- SEO & Indexing Meta Tags -->
-    <title>SheriaHub | Instant AI Legal Intelligence for Kenya</title>
-    <meta name="description" content="Get instant legal analysis on Kenyan law. Expert AI guidance on the Employment Act 2007, Tenancy rights, Land Act, Children Act 2022, and the Penal Code.">
-    <meta name="keywords" content="Kenyan law AI, legal advice Kenya, Employment Act 2007, Children Act 2022, landlord rights Kenya, traffic fines Kenya, Small Claims Court Kenya">
-    <link rel="icon" type="image/png" href="favicon.png">
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="SheriaHub | Kenyan Law Simplified">
+    <meta property="twitter:description" content="Instant AI legal insights and contract auditing grounded in the Laws of Kenya. Knowledge is power.">
+    <meta property="twitter:image" content="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=2070&auto=format&fit=crop">
 
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
@@ -86,38 +78,34 @@
         .legal-card { padding: 25px; border-left: 6px solid var(--navy); background: #f8fafc; margin-top: 25px; border-radius: 12px; text-align: left; }
         .paywall { background: #fffbeb; border: 2px dashed var(--gold); padding: 35px; border-radius: 15px; margin-top: 25px; text-align: center; }
         .premium-content { background: #f0fff4; border: 2px solid #38a169; padding: 30px; border-radius: 15px; margin-top: 25px; line-height: 1.8; text-align: left; white-space: pre-wrap; }
-        .credits-badge { background: var(--gold); padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; display: inline-block; margin-bottom: 12px; }
+        .credits-badge { background: var(--gold); padding: 6px 14px; border-radius: 8px; font-weight: 700; display: inline-block; margin-bottom: 12px; font-size: 0.85rem; }
 
-        /* SEO Sections (FAQ, Info) */
+        /* Practice Areas */
         .info-section { padding: 60px 5%; max-width: 1100px; margin: 0 auto; }
         .section-title { text-align: center; margin-bottom: 40px; color: var(--navy); }
-        
         .practice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-bottom: 60px; }
         .practice-box { background: white; padding: 25px; border-radius: 15px; border-top: 4px solid var(--gold); box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
         .practice-box h3 { margin-top: 0; font-size: 1.2rem; color: var(--navy); }
 
+        /* FAQ */
         .faq-container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
         .faq-item { border-bottom: 1px solid #edf2f7; padding: 15px 0; }
         .faq-item:last-child { border-bottom: none; }
         .faq-q { font-weight: 600; color: var(--navy); cursor: pointer; display: flex; justify-content: space-between; }
         .faq-a { font-size: 0.95rem; margin-top: 10px; color: #4a5568; }
 
+        /* MkatabaCheck Functional Style */
+        .audit-box { background: white; padding: 25px; border-radius: 15px; max-width: 500px; margin: 0 auto; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #cbd5e0; }
+
         /* Footer */
         .footer { background: var(--navy); color: white; text-align: center; padding: 50px 20px; margin-top: auto; border-top: 6px solid var(--gold); }
-        .footer-links { margin-bottom: 20px; display: flex; justify-content: center; gap: 20px; font-size: 0.9rem; }
-        .footer-links a { color: white; text-decoration: none; opacity: 0.8; }
-        .footer-links a:hover { opacity: 1; color: var(--gold); }
         .disclaimer { font-size: 0.8rem; opacity: 0.7; max-width: 800px; margin: 20px auto 0; line-height: 1.4; }
 
-        /* Mobile Adaptability */
         @media (max-width: 600px) {
             .hero { padding: 40px 15px 80px; }
             .hero h1 { font-size: 1.6rem; }
-            .hero p { font-size: 0.95rem; }
-            .category-selector { margin-top: -50px; gap: 8px; }
+            .category-selector { margin-top: -50px; }
             .cat-btn { font-size: 0.75rem; padding: 10px 14px; }
-            .practice-grid { grid-template-columns: 1fr; }
-            .chat-container { padding: 20px; }
         }
     </style>
 </head>
@@ -134,7 +122,6 @@
             <p>Instant legal intelligence for Citizens, Tenants & Motorists using Kenyan Statutes.</p>
         </header>
 
-        <!-- Category Selector -->
         <div class="category-selector">
             <button class="cat-btn active" id="btn-tenant" onclick="setCat('tenant')">🏠 Tenancy</button>
             <button class="cat-btn" id="btn-employment" onclick="setCat('employment')">💼 Employment</button>
@@ -144,14 +131,12 @@
             <button class="cat-btn" id="btn-civil_criminal" onclick="setCat('civil_criminal')">⚖️ Civil/Criminal</button>
         </div>
 
-        <!-- Consultation Section -->
         <main class="chat-container">
             <textarea id="q" placeholder="Ask about rent, deposits, or evictions..."></textarea>
             <button class="ask-btn" id="askBtn" onclick="askAi()">Get AI Consultation</button>
             <div id="res"></div>
         </main>
 
-        <!-- Practice Areas Section -->
         <section class="info-section">
             <h2 class="section-title">Practice Areas Covered</h2>
             <div class="practice-grid">
@@ -173,48 +158,139 @@
                 </div>
             </div>
 
-            <h2 class="section-title">Frequently Asked Questions</h2>
-            <div class="faq-container">
-                <div class="faq-item">
-                    <div class="faq-q">Can a landlord increase rent without notice in Kenya? <span>+</span></div>
-                    <div class="faq-a">Under the Rent Restriction Act, a landlord must provide at least one month's written notice before increasing rent.</div>
+            <!-- MODIFIED BOTTOM SECTION: FUNCTIONAL MKATABACHECK -->
+            <section style="background: #edf2f7; padding: 40px 5%; text-align: center; border-radius: 20px; margin-top: 40px; border: 2px solid var(--gold);">
+                <h2 style="color: var(--navy); margin-bottom: 10px;">📄 MkatabaCheck: Agreement Audit</h2>
+                <p style="opacity: 0.8; max-width: 600px; margin: 0 auto 20px;">Upload your Tenancy, Employment, or Business agreement (PDF) for a legal safety scan.</p>
+                
+                <div class="audit-box">
+                    <input type="file" id="mkatabaFile" accept=".pdf" style="margin-bottom: 15px; font-size: 0.8rem; width: 100%;">
+                    <button class="ask-btn" id="auditBtn" onclick="runAudit()" style="background: var(--gold); color: black;">Run Safety Audit</button>
+                    <div id="auditRes" style="margin-top: 20px; text-align: left; font-size: 0.9rem;"></div>
                 </div>
-                <div class="faq-item">
-                    <div class="faq-q">What is the penalty for summary dismissal? <span>+</span></div>
-                    <div class="faq-a">Wrongful summary dismissal can lead to compensation up to 12 months' salary plus terminal benefits.</div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-q">How long can police hold you without court? <span>+</span></div>
-                    <div class="faq-a">Article 49 of the Constitution requires an arrested person to be brought before a court within 24 hours.</div>
-                </div>
-            </div>
 
-            <!-- ROADMAP SECTION (MODIFIED AS REQUESTED) -->
-            <section style="background: #edf2f7; padding: 40px 5%; text-align: center; border-radius: 20px; margin-top: 40px;">
-                <h2 style="color: var(--navy); margin-bottom: 10px;">🚀 Coming Soon: MkatabaCheck</h2>
-                <p style="opacity: 0.8; max-width: 600px; margin: 0 auto 20px;">Upload your tenancy, employment, or business agreements for an instant AI safety audit.</p>
-                <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-                    <span style="background: white; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid #cbd5e0;">📄 Agreement Audit Mode</span>
-                    <span style="background: white; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid #cbd5e0;">⚖️ Small Claims Court Filing</span>
-                    <span style="background: white; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid #cbd5e0;">📁 Business Registration Guides</span>
+                <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-top: 30px;">
+                    <span style="background: white; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid #cbd5e0; opacity: 0.6;">⚖️ Small Claims Court Filing (Coming Soon)</span>
+                    <span style="background: white; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid #cbd5e0; opacity: 0.6;">📁 Business Registration Guides (Coming Soon)</span>
                 </div>
             </section>
         </section>
     </div>
 
     <footer class="footer">
-        <div class="footer-links">
-            <a href="#">About Us</a>
-            <a href="#">Terms of Service</a>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Contact Support</a>
+        <div class="footer-links" style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px;">
+            <a href="#" style="color: white; text-decoration: none; opacity: 0.8;">About Us</a>
+            <a href="#" style="color: white; text-decoration: none; opacity: 0.8;">Terms</a>
+            <a href="#" style="color: white; text-decoration: none; opacity: 0.8;">Privacy</a>
         </div>
         <p>© 2026 SheriaHub Kenya | Built for Justice</p>
         <p class="disclaimer">
-            <strong>Disclaimer:</strong> SheriaHub is an AI information tool. It provides general information based on Kenyan Statutes and does not constitute professional legal advice.
+            <strong>Disclaimer:</strong> SheriaHub is an AI information tool and does not constitute professional legal advice.
         </p>
     </footer>
 
-    <!-- Script stays exactly as provided previously -->
+<script>
+    const API = "https://sheriahub.onrender.com"; 
+    let cat = "tenant";
+    let lastQ = "";
+    let paymentInterval = null;
+
+    function setCat(c) {
+        cat = c;
+        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`btn-${c}`).classList.add('active');
+        const p = { tenant: "Ask about rent, deposits, evictions...", employment: "Ask about dismissal, leave, NSSF...", land: "Ask about deeds, searches...", family: "Ask about custody, alimony...", traffic: "Ask about fines, arrests...", civil_criminal: "Ask about theft, assault..." };
+        document.getElementById("q").placeholder = p[c];
+    }
+
+    async function askAi(checkId = null) {
+        const qInput = document.getElementById("q");
+        const resDiv = document.getElementById("res");
+        const btn = document.getElementById("askBtn");
+        const activeId = checkId || localStorage.getItem('sheria_payment_id');
+        const question = qInput.value || lastQ;
+        if (!question) return;
+        lastQ = question;
+
+        btn.disabled = true;
+        resDiv.innerHTML = `<p style="text-align:center;">⏳ Sheria AI is analyzing Kenyan Law...</p>`;
+
+        try {
+            const response = await fetch(`${API}/ask-ai`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ question, category: cat, checkout_id: activeId })
+            });
+            const data = await response.json();
+
+            if (data.status === "premium") {
+                const formatted = data.content.replace(/\n/g, '<br>');
+                resDiv.innerHTML = `
+                    <div class="credits-badge">🎟️ ${data.credits_left} deep-dives left</div>
+                    <div class="premium-content"><h3>📋 Full Legal Analysis</h3>${formatted}</div>`;
+                if (data.credits_left === 0) localStorage.removeItem('sheria_payment_id');
+                else if (activeId) localStorage.setItem('sheria_payment_id', activeId);
+            } else {
+                resDiv.innerHTML = `
+                    <div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div>
+                    <div class="paywall">
+                        <h4>🔒 Unlock Full Legal Citations</h4>
+                        <p>Get 2 Full Deep-Dive credits for <strong>KSh 20</strong></p>
+                        <input type="tel" id="phone" placeholder="07XXXXXXXX" style="padding:10px; width:80%; max-width:280px; margin-bottom:12px; border-radius:8px; border:1px solid #ccc;"><br>
+                        <button class="ask-btn" style="background:var(--gold);color:black;max-width:280px;" id="payBtn" onclick="pay()">Pay via M-Pesa</button>
+                        <div id="pStat" style="margin-top:12px; font-weight:600;"></div>
+                    </div>`;
+            }
+        } catch (e) { resDiv.innerHTML = "<p style='color:red;'>Connection Error. Try again.</p>"; }
+        finally { btn.disabled = false; }
+    }
+
+    async function runAudit() {
+        const fileInput = document.getElementById("mkatabaFile");
+        const auditRes = document.getElementById("auditRes");
+        const auditBtn = document.getElementById("auditBtn");
+        if (!fileInput.files[0]) return alert("Select a PDF file.");
+        auditBtn.disabled = true;
+        auditRes.innerHTML = `<p style="text-align:center;">⏳ Auditing Mkataba...</p>`;
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+        try {
+            const response = await fetch(`${API}/audit-contract`, { method: "POST", body: formData });
+            const data = await response.json();
+            if (data.analysis) {
+                const f = data.analysis.replace(/\n/g, '<br>');
+                auditRes.innerHTML = `<div class="legal-card"><strong>Audit Report:</strong><br><br>${f}</div>`;
+            } else { auditRes.innerHTML = "❌ Audit failed. Try again."; }
+        } catch (e) { auditRes.innerHTML = "❌ Connection Error."; }
+        finally { auditBtn.disabled = false; }
+    }
+
+    async function pay() {
+        const pInput = document.getElementById("phone").value;
+        const pStat = document.getElementById("pStat");
+        const payBtn = document.getElementById("payBtn");
+        if(!pInput) return alert("Enter M-Pesa number");
+        pStat.innerText = "⏳ Initializing STK Push...";
+        payBtn.disabled = true;
+        try {
+            const res = await fetch(`${API}/stkpush`, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ phone: pInput }) });
+            const data = await res.json();
+            if (!data.checkout_id) { pStat.innerText = "❌ Failed."; payBtn.disabled = false; return; }
+            pStat.innerText = "📩 Prompt sent! Enter PIN...";
+            paymentInterval = setInterval(async () => {
+                try {
+                    const check = await fetch(`${API}/check-payment/${data.checkout_id}`);
+                    const r = await check.json();
+                    if (r.status === "paid") {
+                        clearInterval(paymentInterval);
+                        pStat.innerText = "✅ Confirmed!";
+                        localStorage.setItem('sheria_payment_id', data.checkout_id);
+                        askAi(data.checkout_id);
+                    }
+                } catch (e) {}
+            }, 4000);
+        } catch (e) { pStat.innerText = "❌ Error."; payBtn.disabled = false; }
+    }
+</script>
 </body>
 </html>
