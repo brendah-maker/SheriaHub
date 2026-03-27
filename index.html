@@ -3,139 +3,187 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SheriaHub | Logic Foundry Agreement Audit</title>
+    <link rel="icon" href="/sheria.ico" type="image/x-icon">
+
+    <!-- PRIMARY SEO -->
+    <title>SheriaHub | AI-Powered Kenyan Legal Intelligence</title>
+    <meta name="description" content="Navigate the Laws of Kenya with precision. SheriaHub uses Llama-3 AI to provide instant, simplified legal information for citizens, entrepreneurs, and students.">
+
+    <!-- OPEN GRAPH / LINKEDIN / WHATSAPP -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://sheriahub.co.ke/">
+    <meta property="og:title" content="SheriaHub | Your AI Legal Partner in Kenya ⚖️">
+    <meta property="og:description" content="Democratizing access to justice. Get instant clarity on the Constitution and Acts of Parliament using our specialized AI engine.">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=2070&auto=format&fit=crop">
+
+    <!-- TWITTER -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="SheriaHub | Kenyan Law Simplified">
+    <meta property="twitter:description" content="Instant AI legal insights grounded in the Laws of Kenya. Knowledge is power.">
+    <meta property="twitter:image" content="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=2070&auto=format&fit=crop">
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="favicon.png">
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f172a; color: #f8fafc; }
-        .emerald-text { color: #10b981; }
-        .emerald-bg { background-color: #10b981; }
-        .glass { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .cat-btn { padding: 12px 20px; border-radius: 12px; border: 1px solid #1e293b; background: #1e293b; color: #94a3b8; cursor: pointer; font-weight: 600; transition: 0.3s; }
-        .cat-btn.active { background: #10b981; color: #0f172a; border-color: #10b981; }
-        .legal-card { padding: 25px; border-left: 6px solid #10b981; background: rgba(255,255,255,0.03); margin-top: 25px; border-radius: 12px; }
-        .red-flag { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #fca5a5; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 0.9rem; }
+        :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f5f7fa; --white: #ffffff; --text: #2d3748; }
+        
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; line-height: 1.6; }
+
+        h1, h2, h3, .navbar-brand { font-family: 'Poppins', sans-serif; }
+
+        /* Navigation */
+        .navbar { background: var(--navy); color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--gold); position: sticky; top: 0; z-index: 1000; }
+        .navbar-brand { font-weight: bold; font-size: 1.4rem; display: flex; align-items: center; gap: 8px; }
+        .region-badge { font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2); font-weight: 500; }
+
+        /* Hero Section */
+        .hero { background: var(--navy); color: white; text-align: center; padding: 60px 20px 100px; }
+        .hero h1 { margin: 0; font-size: 2.2rem; letter-spacing: -0.5px; }
+        .hero p { opacity: 0.9; margin: 15px auto 0; max-width: 600px; font-size: 1.1rem; }
+
+        /* Main Content wrapper */
+        .main-content { flex: 1; }
+
+        /* Category Selector */
+        .category-selector { 
+            display: flex; justify-content: center; gap: 10px; margin: -40px auto 30px; 
+            padding: 0 15px; flex-wrap: wrap; z-index: 10; position: relative; max-width: 1000px; 
+        }
+        .cat-btn { 
+            padding: 12px 20px; border-radius: 30px; border: 2px solid var(--gold); 
+            background: var(--white); cursor: pointer; font-weight: 600; transition: 0.3s; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-size: 0.9rem;
+        }
+        .cat-btn.active { background: var(--gold); color: black; transform: translateY(-2px); }
+
+        /* Chat UI */
+        .chat-container { width: 95%; max-width: 700px; margin: 20px auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+        textarea { 
+            width: 100%; height: 130px; padding: 18px; border-radius: 12px; border: 2px solid #e2e8f0; 
+            font-size: 16px; margin-bottom: 15px; resize: none; outline: none; transition: 0.3s; font-family: inherit;
+        }
+        textarea:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(10, 31, 68, 0.05); }
+        
+        .ask-btn { 
+            width: 100%; padding: 16px; background: var(--navy); color: white; border: none; 
+            border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 1.1rem; 
+            transition: 0.3s; font-family: 'Poppins', sans-serif;
+        }
+        .ask-btn:hover { background: #152e5a; }
+        .ask-btn:disabled { background: #cbd5e0; cursor: not-allowed; }
+
+        /* AI Result Styles */
+        .legal-card { padding: 25px; border-left: 6px solid var(--navy); background: #f8fafc; margin-top: 25px; border-radius: 12px; text-align: left; }
+        .paywall { background: #fffbeb; border: 2px dashed var(--gold); padding: 35px; border-radius: 15px; margin-top: 25px; text-align: center; }
+        .premium-content { background: #f0fff4; border: 2px solid #38a169; padding: 30px; border-radius: 15px; margin-top: 25px; line-height: 1.8; text-align: left; white-space: pre-wrap; }
+        .credits-badge { background: var(--gold); padding: 6px 14px; border-radius: 8px; font-weight: 700; display: inline-block; margin-bottom: 12px; font-size: 0.85rem; }
+
+        /* Info Sections */
+        .info-section { padding: 60px 5%; max-width: 1100px; margin: 0 auto; }
+        .section-title { text-align: center; margin-bottom: 40px; color: var(--navy); }
+        .practice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-bottom: 60px; }
+        .practice-box { background: white; padding: 25px; border-radius: 15px; border-top: 4px solid var(--gold); box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+        .practice-box h3 { margin-top: 0; font-size: 1.2rem; color: var(--navy); }
+
+        .faq-container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .faq-item { border-bottom: 1px solid #edf2f7; padding: 15px 0; }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-q { font-weight: 600; color: var(--navy); cursor: pointer; display: flex; justify-content: space-between; }
+        .faq-a { font-size: 0.95rem; margin-top: 10px; color: #4a5568; }
+
+        /* Footer */
+        .footer { background: var(--navy); color: white; text-align: center; padding: 50px 20px; margin-top: auto; border-top: 6px solid var(--gold); }
+        .footer-links { margin-bottom: 20px; display: flex; justify-content: center; gap: 20px; font-size: 0.9rem; }
+        .footer-links a { color: white; text-decoration: none; opacity: 0.8; }
+        .footer-links a:hover { opacity: 1; color: var(--gold); }
+        .disclaimer { font-size: 0.8rem; opacity: 0.7; max-width: 800px; margin: 20px auto 0; line-height: 1.4; }
     </style>
 </head>
 <body>
 
-    <nav class="p-6 glass sticky top-0 z-50 flex justify-between items-center border-b border-white/5">
-        <div class="flex items-center gap-2">
-            <div class="w-6 h-6 emerald-bg rounded shadow-lg shadow-emerald-500/20"></div>
-            <h1 class="text-xl font-extrabold tracking-tighter uppercase">Sheria<span class="emerald-text">Hub</span></h1>
-        </div>
-        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">A Logic Foundry Product</div>
+    <nav class="navbar">
+        <div class="navbar-brand">⚖️ SheriaHub</div>
+        <div class="region-badge">KENYA 🇰🇪</div>
     </nav>
 
-    <main class="max-w-4xl mx-auto px-6 py-12">
-        <header class="text-center mb-12">
-            <h2 class="text-4xl md:text-6xl font-black text-white leading-tight">Mkataba<span class="emerald-text">Check</span></h2>
-            <p class="text-slate-400 mt-4">Audit any Kenyan agreement for illegal clauses and hidden risks in seconds.</p>
+    <div class="main-content">
+        <header class="hero">
+            <h1>Your Legal Rights, Simplified.</h1>
+            <p>Instant legal intelligence for Citizens, Tenants & Motorists using Kenyan Statutes.</p>
         </header>
 
-        <div class="flex flex-wrap gap-3 justify-center mb-10">
-            <button class="cat-btn active" id="btn-contract_audit" onclick="setCat('contract_audit')">📄 MkatabaCheck</button>
-            <button class="cat-btn" id="btn-tenant" onclick="setCat('tenant')">🏠 Tenancy Q&A</button>
-            <button class="cat-btn" id="btn-employment" onclick="setCat('employment')">💼 Workplace Q&A</button>
-            <button class="cat-btn" id="btn-family" onclick="setCat('family')">⚖️ General Law</button>
+        <div class="category-selector">
+            <button class="cat-btn active" id="btn-tenant" onclick="setCat('tenant')">🏠 Tenancy</button>
+            <button class="cat-btn" id="btn-employment" onclick="setCat('employment')">💼 Employment</button>
+            <button class="cat-btn" id="btn-land" onclick="setCat('land')">🌳 Land</button>
+            <button class="cat-btn" id="btn-family" onclick="setCat('family')">👨‍👩‍👧 Family</button>
+            <button class="cat-btn" id="btn-traffic" onclick="setCat('traffic')">🚗 Traffic</button>
+            <button class="cat-btn" id="btn-civil_criminal" onclick="setCat('civil_criminal')">⚖️ Civil/Criminal</button>
         </div>
 
-        <div class="glass p-8 rounded-[2.5rem]">
-            <!-- File Upload (Only shows when MkatabaCheck is active) -->
-            <div id="file-area" class="mb-6">
-                <label class="block text-[10px] font-black emerald-text uppercase tracking-widest mb-3">Upload Contract (PDF)</label>
-                <input type="file" id="contract_file" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-emerald-500/10 file:text-emerald-500">
-            </div>
-
-            <!-- Text Question (Shows for other categories) -->
-            <div id="text-area" class="hidden">
-                <textarea id="q" placeholder="What is your legal question?" class="w-full h-32 bg-slate-900 border-none rounded-2xl p-4 text-white outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
-            </div>
-
-            <button id="askBtn" onclick="askAi()" class="w-full py-5 emerald-bg text-slate-950 font-black rounded-2xl uppercase tracking-widest hover:scale-[0.99] transition-all">Start AI Audit</button>
-            
+        <main class="chat-container">
+            <textarea id="q" placeholder="Ask about rent, deposits, or evictions..."></textarea>
+            <button class="ask-btn" id="askBtn" onclick="askAi()">Get AI Consultation</button>
             <div id="res"></div>
+        </main>
+
+        <section class="info-section">
+            <h2 class="section-title">Practice Areas Covered</h2>
+            <div class="practice-grid">
+                <div class="practice-box">
+                    <h3>Employment Act 2007</h3>
+                    <p>Guidance on wrongful dismissal, summary termination, leave rights, and contract disputes.</p>
+                </div>
+                <div class="practice-box">
+                    <h3>Rent Restriction Act</h3>
+                    <p>Understanding landlord-tenant relationships, deposits, and lawful eviction procedures.</p>
+                </div>
+                <div class="practice-box">
+                    <h3>Penal Code Cap 63</h3>
+                    <p>Criminal offenses, rights upon arrest (Article 49), and police bond.</p>
+                </div>
+                <div class="practice-box">
+                    <h3>Children Act 2022</h3>
+                    <p>Information on child maintenance, custody rights, and the legal welfare of minors.</p>
+                </div>
+            </div>
+
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <div class="faq-container">
+                <div class="faq-item"><div class="faq-q">Can a landlord increase rent without notice? <span>+</span></div><div class="faq-a">A landlord must provide at least one month's written notice.</div></div>
+                <div class="faq-item"><div class="faq-q">Penalty for summary dismissal? <span>+</span></div><div class="faq-a">Can lead to compensation up to 12 months' salary.</div></div>
+            </div>
+
+            <!-- ROADMAP SECTION (Where Mkataba is added) -->
+            <section style="background: #edf2f7; padding: 40px 5%; text-align: center; border-radius: 20px; margin-top: 40px;">
+                <h2 style="color: var(--navy); margin-bottom: 10px;">🚀 What's Coming Next?</h2>
+                <p style="opacity: 0.8; max-width: 600px; margin: 0 auto 20px;">We are expanding Sheria AI to provide deeper document auditing and filing help.</p>
+                <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+                    <span style="background: white; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid #cbd5e0;">📄 MkatabaCheck (Agreement Audit)</span>
+                    <span style="background: white; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid #cbd5e0;">⚖️ Small Claims Court Filing</span>
+                    <span style="background: white; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid #cbd5e0;">📁 Business Registration Guides</span>
+                </div>
+            </section>
+        </section>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#">About Us</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Privacy Policy</a>
         </div>
-    </main>
+        <p>© 2026 SheriaHub Kenya | Built for Justice</p>
+        <p class="disclaimer"><strong>Disclaimer:</strong> SheriaHub is an AI information tool and does not constitute professional legal advice.</p>
+    </footer>
 
-<script>
-    let cat = "contract_audit";
-    const API = ""; // YOUR RENDER LINK
-
-    function setCat(c) {
-        cat = c;
-        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(`btn-${c}`).classList.add('active');
-        
-        if (c === 'contract_audit') {
-            document.getElementById('file-area').classList.remove('hidden');
-            document.getElementById('text-area').classList.add('hidden');
-            document.getElementById('askBtn').innerText = "Start AI Audit";
-        } else {
-            document.getElementById('file-area').classList.add('hidden');
-            document.getElementById('text-area').classList.remove('hidden');
-            document.getElementById('askBtn').innerText = "Get Legal Consultation";
-        }
-    }
-
-    async function askAi(checkId = null) {
-        const resDiv = document.getElementById("res");
-        const btn = document.getElementById("askBtn");
-        const fileInput = document.getElementById("contract_file");
-        const qInput = document.getElementById("q");
-        
-        const activeId = checkId || localStorage.getItem('sheria_id');
-        
-        const formData = new FormData();
-        formData.append("category", cat);
-        formData.append("checkout_id", activeId);
-        
-        if (cat === "contract_audit") {
-            if (!fileInput.files[0]) return alert("Please upload a PDF contract");
-            formData.append("contract_file", fileInput.files[0]);
-        } else {
-            if (!qInput.value) return alert("Please enter a question");
-            formData.append("question", qInput.value);
-        }
-
-        btn.disabled = true;
-        resDiv.innerHTML = `<p class="text-center animate-pulse mt-8 emerald-text uppercase font-bold text-xs">⏳ Logic Foundry AI is auditing statutes...</p>`;
-
-        try {
-            const response = await fetch(`${API}/ask-ai`, { method: "POST", body: formData });
-            const data = await response.json();
-
-            let html = `<div class="legal-card"><b class="emerald-text uppercase text-[10px]">AI Summary</b><p class="text-white mt-2">${data.summary}</p></div>`;
-
-            if (data.red_flags) {
-                html += `<div class="mt-4"><b class="text-red-400 uppercase text-[10px]">Red Flags Detected</b>`;
-                data.red_flags.forEach(f => { html += `<div class="red-flag">⚠️ ${f}</div>`; });
-                html += `</div>`;
-            }
-
-            if (data.status === "premium") {
-                html += `<div class="bg-emerald-500/10 p-6 rounded-2xl mt-4 border border-emerald-500/20">
-                            <b class="emerald-text uppercase text-[10px]">Deep-Dive Legal Counsel</b>
-                            <p class="text-slate-300 text-sm mt-3 whitespace-pre-wrap">${data.content}</p>
-                         </div>`;
-            } else {
-                html += `
-                <div class="p-8 bg-slate-900 rounded-3xl mt-6 text-center border border-dashed border-emerald-500/30">
-                    <p class="text-white font-bold">🔒 Unlock Full Legal Counsel</p>
-                    <p class="text-slate-500 text-xs mt-1">Get 2 deep-dives for KSh 20</p>
-                    <input type="tel" id="phone" placeholder="07XXXXXXXX" class="mt-4 p-3 bg-slate-800 rounded-xl text-white text-center">
-                    <button onclick="pay()" class="block w-full mt-3 emerald-bg text-slate-950 font-bold py-3 rounded-xl">Pay with M-Pesa</button>
-                    <div id="pStat" class="text-xs mt-2"></div>
-                </div>`;
-            }
-            resDiv.innerHTML = html;
-        } catch (e) { resDiv.innerHTML = "Error processing request."; }
-        finally { btn.disabled = false; }
-    }
-
-    // Include your existing Pay() and check_payment() logic here...
-</script>
+    <script>
+        // ... (Keep your existing script exactly as it was)
+    </script>
 </body>
 </html>
