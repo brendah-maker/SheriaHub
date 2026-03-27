@@ -4,81 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/sheria.ico" type="image/x-icon">
-
-    <!-- SEO & OPEN GRAPH -->
     <title>SheriaHub | AI-Powered Kenyan Legal Intelligence</title>
-    <meta name="description" content="Navigate the Laws of Kenya. Instant AI legal information and Mkataba (Contract) auditing using Kenyan Statutes.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-    
     <style>
         :root { --navy: #0a1f44; --gold: #f39c12; --bg: #f5f7fa; --white: #ffffff; --text: #2d3748; }
         * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; line-height: 1.6; margin: 0; }
-        h1, h2, h3, .navbar-brand { font-family: 'Poppins', sans-serif; }
-
-        .navbar { background: var(--navy); color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--gold); position: sticky; top: 0; z-index: 1000; }
-        .navbar-brand { font-weight: bold; font-size: 1.4rem; }
-        
-        .hero { background: var(--navy); color: white; text-align: center; padding: 60px 20px 100px; }
-        .hero h1 { margin: 0; font-size: 2.2rem; }
-        
-        .category-selector { display: flex; justify-content: center; gap: 10px; margin: -40px auto 30px; flex-wrap: wrap; max-width: 1000px; padding: 0 15px; }
-        .cat-btn { padding: 12px 20px; border-radius: 30px; border: 2px solid var(--gold); background: var(--white); cursor: pointer; font-weight: 600; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .cat-btn.active { background: var(--gold); color: black; }
-
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; margin: 0; }
+        .navbar { background: var(--navy); color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--gold); }
+        .hero { background: var(--navy); color: white; text-align: center; padding: 50px 20px; }
+        .category-selector { display: flex; justify-content: center; gap: 10px; margin: -30px auto 30px; flex-wrap: wrap; padding: 0 15px; }
+        .cat-btn { padding: 12px 20px; border-radius: 30px; border: 2px solid var(--gold); background: white; cursor: pointer; font-weight: 600; }
+        .cat-btn.active { background: var(--gold); }
         .chat-container { width: 95%; max-width: 700px; margin: 20px auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
-        textarea { width: 100%; height: 130px; padding: 18px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 16px; margin-bottom: 15px; resize: none; font-family: inherit; }
-        
-        .ask-btn { width: 100%; padding: 16px; background: var(--navy); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 1.1rem; transition: 0.3s; }
-        .ask-btn:hover { background: #152e5a; }
-
-        .legal-card { padding: 25px; border-left: 6px solid var(--navy); background: #f8fafc; margin-top: 25px; border-radius: 12px; text-align: left; }
-        .paywall { background: #fffbeb; border: 2px dashed var(--gold); padding: 30px; border-radius: 15px; margin-top: 25px; text-align: center; }
-        .premium-content { background: #f0fff4; border: 2px solid #38a169; padding: 25px; border-radius: 12px; margin-top: 15px; white-space: pre-wrap; text-align: left; }
-        
-        .footer { background: var(--navy); color: white; text-align: center; padding: 40px 20px; border-top: 6px solid var(--gold); margin-top: 50px; }
+        textarea { width: 100%; height: 120px; padding: 15px; border-radius: 12px; border: 2px solid #e2e8f0; margin-bottom: 10px; resize: none; }
+        .ask-btn { width: 100%; padding: 15px; background: var(--navy); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; }
+        .legal-card { padding: 20px; border-left: 6px solid var(--navy); background: #f8fafc; margin-top: 20px; border-radius: 10px; text-align: left; }
+        .paywall { background: #fffbeb; border: 2px dashed var(--gold); padding: 25px; border-radius: 12px; margin-top: 20px; text-align: center; }
+        .audit-section { background: #edf2f7; padding: 40px 5%; text-align: center; border-radius: 20px; margin: 40px auto; max-width: 800px; border: 2px solid var(--gold); }
+        .footer { background: var(--navy); color: white; text-align: center; padding: 30px; margin-top: 50px; }
     </style>
 </head>
 <body>
 
     <nav class="navbar">
         <div class="navbar-brand">⚖️ SheriaHub</div>
-        <div class="region-badge" style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2);">KENYA 🇰🇪</div>
+        <div style="font-size: 0.8rem;">KENYA 🇰🇪</div>
     </nav>
 
     <header class="hero">
-        <h1>Your Legal Rights, Simplified.</h1>
-        <p>Instant legal intelligence for Citizens, Tenants & Motorists.</p>
+        <h1>Kenyan Legal Rights</h1>
+        <p>Instant guidance on Statutes & Agreements.</p>
     </header>
 
     <div class="category-selector">
         <button class="cat-btn active" id="btn-tenant" onclick="setCat('tenant')">🏠 Tenancy</button>
         <button class="cat-btn" id="btn-employment" onclick="setCat('employment')">💼 Employment</button>
-        <button class="cat-btn" id="btn-family" onclick="setCat('family')">👨‍👩‍👧 Family</button>
-        <button class="cat-btn" id="btn-traffic" onclick="setCat('traffic')">🚗 Traffic</button>
     </div>
 
     <main class="chat-container">
-        <textarea id="q" placeholder="Ask about rent, deposits, or evictions..."></textarea>
+        <textarea id="q" placeholder="Ask a legal question..."></textarea>
         <button class="ask-btn" id="askBtn" onclick="askAi()">Get AI Consultation</button>
         <div id="res"></div>
     </main>
 
-    <!-- FUNCTIONAL MKATABACHECK SECTION -->
-    <section style="background: #edf2f7; padding: 50px 5%; text-align: center; border-radius: 20px; margin: 40px auto; max-width: 900px; border: 2px solid var(--gold);">
-        <h2 style="color: var(--navy);">📄 MkatabaCheck: Agreement Audit</h2>
-        <p style="opacity: 0.8; max-width: 600px; margin: 0 auto 20px;">Upload your Tenancy or Employment agreement (PDF) for a legal safety scan.</p>
-        
-        <div style="background: white; padding: 25px; border-radius: 15px; max-width: 500px; margin: 0 auto; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-            <input type="file" id="mkatabaFile" accept=".pdf" style="margin-bottom: 15px; font-size: 0.8rem; width: 100%;">
+    <section class="audit-section">
+        <h2>📄 MkatabaCheck: Agreement Audit</h2>
+        <p>Upload a PDF agreement for a legal safety scan.</p>
+        <div style="background: white; padding: 20px; border-radius: 15px; max-width: 450px; margin: 0 auto;">
+            <input type="file" id="mkatabaFile" accept=".pdf" style="margin-bottom: 15px; width: 100%;">
             <button class="ask-btn" id="auditBtn" onclick="runAudit()" style="background: var(--gold); color: black;">Run Safety Audit</button>
-            <div id="auditRes" style="margin-top: 20px; text-align: left; font-size: 0.95rem;"></div>
+            <div id="auditRes" style="margin-top: 15px; text-align: left;"></div>
         </div>
     </section>
 
     <footer class="footer">
         <p>© 2026 SheriaHub Kenya | Built for Justice</p>
-        <p style="font-size: 0.8rem; opacity: 0.7;">Disclaimer: SheriaHub is an AI tool and does not constitute professional legal advice.</p>
     </footer>
 
 <script>
@@ -94,60 +74,58 @@
     async function askAi(checkId = null) {
         const q = document.getElementById("q").value;
         const resDiv = document.getElementById("res");
-        const btn = document.getElementById("askBtn");
-        const activeId = checkId || localStorage.getItem('sheria_payment_id');
-
+        const activeId = checkId || localStorage.getItem('sheria_id');
         if (!q) return;
-        btn.disabled = true;
-        resDiv.innerHTML = `<p style="text-align:center;">⏳ Analyzing Kenyan Law...</p>`;
-
+        resDiv.innerHTML = "⏳ Analyzing...";
         try {
-            const response = await fetch(`${API}/ask-ai`, {
+            const r = await fetch(`${API}/ask-ai`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({ question: q, category: cat, checkout_id: activeId })
             });
-            const data = await response.json();
-
-            if (data.status === "premium") {
-                resDiv.innerHTML = `<div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div><div class="premium-content"><strong>📋 Full Analysis:</strong><br>${data.content.replace(/\n/g, '<br>')}</div>`;
-                if (data.credits_left === 0) localStorage.removeItem('sheria_payment_id');
+            const d = await r.json();
+            if (d.status === "premium") {
+                resDiv.innerHTML = `<div class="legal-card"><b>Summary:</b><br>${d.summary}</div><div style="padding:15px; background:#f0fff4; border:1px solid #38a169; margin-top:10px; border-radius:8px;"><b>Detailed Analysis:</b><br>${d.content.replace(/\n/g, '<br>')}</div>`;
             } else {
-                resDiv.innerHTML = `<div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div><div class="paywall"><h4>🔒 Unlock Full Citations</h4><p>Pay <strong>KSh 20</strong></p><input type="tel" id="p1" placeholder="07XXXXXXXX" style="padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc;"><br><button class="ask-btn" style="background:var(--gold);color:black;max-width:200px;" onclick="pay('p1', 'askAi')">Pay via M-Pesa</button><div id="stat1"></div></div>`;
+                resDiv.innerHTML = `<div class="legal-card"><b>Summary:</b><br>${d.summary}</div><div class="paywall">🔒 Unlock Analysis (KSh 20)<br><input type="tel" id="p1" placeholder="07XXXXXXXX" style="margin-top:10px;"><br><button onclick="pay('p1', 'askAi')">Pay via M-Pesa</button></div>`;
             }
-        } catch (e) { resDiv.innerHTML = "Error."; }
-        finally { btn.disabled = false; }
+        } catch (e) { resDiv.innerHTML = "Connection Error."; }
     }
 
     async function runAudit(checkId = null) {
         const fileInput = document.getElementById("mkatabaFile");
         const auditRes = document.getElementById("auditRes");
         const auditBtn = document.getElementById("auditBtn");
-        const activeId = checkId || localStorage.getItem('sheria_payment_id');
+        const activeId = checkId || localStorage.getItem('sheria_id');
 
         if (!fileInput.files[0]) return alert("Select a PDF.");
         auditBtn.disabled = true;
-        auditRes.innerHTML = `<p style="text-align:center;">⏳ Auditing Document...</p>`;
+        auditRes.innerHTML = "⏳ Auditing Document...";
 
         const formData = new FormData();
         formData.append("file", fileInput.files[0]);
         formData.append("checkout_id", activeId);
 
         try {
-            const response = await fetch(`${API}/audit-contract`, { method: "POST", body: formData });
-            const data = await response.json();
+            const r = await fetch(`${API}/audit-contract`, { method: "POST", body: formData });
+            const d = await r.json();
             
-            let html = `<div style="background:#f8fafc; padding:15px; border-left:4px solid var(--gold); border-radius:8px;"><strong>Summary:</strong> ${data.risk_summary}<br><br><strong style="color:#c53030;">Red Flags:</strong><ul>${data.red_flags.map(f => `<li>⚠️ ${f}</li>`).join('')}</ul></div>`;
+            if (d.error) {
+                auditRes.innerHTML = `<p style="color:red;">❌ Error: ${d.error}</p>`;
+                return;
+            }
 
-            if (data.is_paid) {
-                html += `<div class="premium-content"><strong>📋 Detailed Audit & Recommendations:</strong><br>${data.full_analysis.replace(/\n/g, '<br>')}<br><br>${data.recommendations.replace(/\n/g, '<br>')}</div>`;
-                if (data.credits_left === 0) localStorage.removeItem('sheria_payment_id');
+            let html = `<div class="legal-card"><b>Risk Summary:</b><br>${d.risk_summary}<br><br><b style="color:red;">Red Flags:</b><ul>${(d.red_flags || []).map(f => `<li>${f}</li>`).join('')}</ul></div>`;
+
+            if (d.is_paid) {
+                html += `<div style="padding:15px; background:#f0fff4; border:1px solid #38a169; border-radius:8px; margin-top:10px;"><b>Report:</b><br>${d.full_analysis.replace(/\n/g, '<br>')}<br><br><b>Advice:</b><br>${d.recommendations.replace(/\n/g, '<br>')}</div>`;
             } else {
-                html += `<div class="paywall"><h4>🔒 Unlock Full Audit & Negotiation Strategy</h4><p>Pay <strong>KSh 20</strong></p><input type="tel" id="p2" placeholder="07XXXXXXXX" style="padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc;"><br><button class="ask-btn" style="background:var(--gold);color:black;max-width:200px;" onclick="pay('p2', 'runAudit')">Pay via M-Pesa</button><div id="stat2"></div></div>`;
+                html += `<div class="paywall">🔒 Unlock Full Report (KSh 20)<br><input type="tel" id="p2" placeholder="07XXXXXXXX" style="margin-top:10px;"><br><button onclick="pay('p2', 'runAudit')">Pay via M-Pesa</button></div>`;
             }
             auditRes.innerHTML = html;
-        } catch (e) { auditRes.innerHTML = "Error."; }
-        finally { auditBtn.disabled = false; }
+        } catch (e) { 
+            auditRes.innerHTML = "<p style='color:red;'>Connection Error. Try again.</p>"; 
+        } finally { auditBtn.disabled = false; }
     }
 
     async function pay(phoneId, callbackName) {
@@ -162,7 +140,7 @@
                 const r = await check.json();
                 if (r.status === "paid") {
                     clearInterval(interval);
-                    localStorage.setItem('sheria_payment_id', data.checkout_id);
+                    localStorage.setItem('sheria_id', data.checkout_id);
                     window[callbackName](data.checkout_id);
                 }
             }, 4000);
