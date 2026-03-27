@@ -1,8 +1,7 @@
 import os
 import json
 import requests
-import pdfplumber
-import io
+import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from groq import Groq
@@ -10,9 +9,9 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- DATABASE ---
+# --- 1. DATABASE CONFIGURATION ---
 uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
 if uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -28,84 +27,160 @@ class Payment(db.Model):
 
 with app.app_context():
     db.create_all()
+    try:
+        db.session.execute(text("ALTER TABLE payment ADD COLUMN credits INTEGER DEFAULT 0"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
-# --- API KEYS ---
+# --- 2. API KEYS ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY", "").strip()
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY", "").strip()
 IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
 BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
-client = Groq(api_key=GROQ_API_KEY)
+client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# --- AI LOGIC ---
+@app.route('/')
+@app.route('/health')
+def health():
+    return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
+
+# --- 3. THE "GATED" AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
+    if not client: return jsonify({"error": "AI not initialized"}), 500
     try:
-        # Check if it's a file upload (MkatabaCheck) or a text question
-        category = request.form.get("category", "tenant")
-        question = request.form.get("question", "")
-        checkout_id = request.form.get("checkout_id")
-        
-        contract_text = ""
-        if 'contract_file' in request.files:
-            file = request.files['contract_file']
-            with pdfplumber.open(io.BytesIO(file.read())) as pdf:
-                contract_text = " ".join([page.extract_text() or "" for page in pdf.pages])
+        data = request.get_json()
+        question = data.get("question", "")
+        category = data.get("category", "tenant")
+        checkout_id = data.get("checkout_id")
 
-        # Credit System Logic
         is_paid = False
         credits_left = 0
+
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
+            if not payment:
+                try:
+                    headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
+                    res = requests.get(f"{BASE_URL}/payment/status/{checkout_id}/", headers=headers)
+                    if res.json().get("invoice", {}).get("state") == "COMPLETE":
+                        payment = Payment(id=checkout_id, status="paid", credits=2)
+                        db.session.add(payment)
+                        db.session.commit()
+                except: pass
+
             if payment and payment.status == "paid" and payment.credits > 0:
                 is_paid = True
                 payment.credits -= 1
                 credits_left = payment.credits
                 db.session.commit()
 
-        # System Prompt logic based on Category
-        if category == "contract_audit":
-            system_msg = (
-                "You are an expert Kenyan Contract Lawyer. Analyze the provided agreement for:\n"
-                "1. ILLEGAL CLAUSES: Does it violate Kenyan laws (Employment Act, Tenancy Act, etc.)?\n"
-                "2. HIDDEN COSTS: Are there compounding interests or unfair penalties?\n"
-                "3. TERMINATION TRAPS: Is the exit strategy unfair?\n\n"
-                "Return ONLY JSON: { 'summary': 'short overview', 'red_flags': ['list of risks'], 'legal_counsel': 'full advice' }"
-            )
-            user_input = f"CONTRACT TEXT: {contract_text[:4000]}"
-        else:
-            system_msg = "You are a Kenyan legal expert. Start with 'SUMMARY: ' then 'DEEP_DIVE: '."
-            user_input = question
+        law_map = {
+            "employment": "Employment Law",
+            "land": "Land & Property Law",
+            "family": "Family & Children Law",
+            "traffic": "Traffic Law",
+            "tenant": "Tenancy Law",
+            "civil_criminal": "Civil & Criminal Law"
+        }
+            
+        system_msg = (
+            f"You are a Kenyan legal expert on {law_map.get(category)}. "
+            "You MUST follow these rules for the response:\n"
+            "1. Start with 'SUMMARY: ' followed by a helpful 1-2 sentence overview. NEVER mention specific Act names or Section numbers here.\n"
+            "2. Then write 'DEEP_DIVE: ' followed by the full details, including Sections, Acts, Court names, and Steps."
+        )
 
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
-            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": user_input}],
-            response_format={"type": "json_object"} if category == "contract_audit" else None
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": question}
+            ]
         )
         
-        raw_res = completion.choices[0].message.content
-
-        if category == "contract_audit":
-            data = json.loads(raw_res)
-            return jsonify({
-                "status": "premium" if is_paid else "free",
-                "credits_left": credits_left,
-                "summary": data.get("summary"),
-                "red_flags": data.get("red_flags"),
-                "content": data.get("legal_counsel") if is_paid else "🔒 Deep-Dive Locked. Pay 20/- to unlock full legal counsel."
-            })
+        full_text = completion.choices[0].message.content
+        summary = ""
+        deep_dive = ""
         
-        # Standard Legal Question Logic
-        parts = raw_res.split("DEEP_DIVE:")
+        # Robust Clean Split
+        clean_txt = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
+        if "DEEP_DIVE:" in clean_txt:
+            parts = clean_txt.split("DEEP_DIVE:")
+            summary = parts[0].replace("SUMMARY:", "").strip()
+            deep_dive = parts[1].strip()
+        else:
+            summary = full_text.split('.')[0] + "."
+            deep_dive = full_text
+
         return jsonify({
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
-            "summary": parts[0].replace("SUMMARY:", "").strip(),
-            "content": parts[1].strip() if is_paid else "🔒 Detailed section locked."
+            "summary": summary,
+            "content": deep_dive if is_paid else "🔒 Payment required for specific Acts, Section citations, and step-by-step court filing guides."
         })
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# (Keep your existing stkpush, check_payment, and callback routes exactly as they were)
+# --- 4. PAYMENT ROUTES ---
+@app.route('/stkpush', methods=['POST'])
+def stk_push():
+    try:
+        data = request.get_json()
+        phone = data.get("phone", "").strip().replace("+", "")
+        if phone.startswith("0"): phone = "254" + phone[1:]
+        elif (phone.startswith("7") or phone.startswith("1")) and len(phone) == 9: phone = "254" + phone
+        
+        payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
+        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
+        
+        res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
+        res_data = res.json()
+        
+        inv_id = res_data.get("invoice", {}).get("invoice_id")
+        if inv_id:
+            db.session.add(Payment(id=inv_id, status="pending", credits=0))
+            db.session.commit()
+            return jsonify({"checkout_id": inv_id})
+        return jsonify({"error": "Rejected"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# FIX: Added Callback Route back in
+@app.route('/api/callback', methods=['POST'])
+def callback():
+    data = request.get_json()
+    inv_id = data.get("invoice_id")
+    if inv_id and data.get("state") == "COMPLETE":
+        p = Payment.query.get(inv_id)
+        if not p: db.session.add(Payment(id=inv_id, status="paid", credits=2))
+        else:
+            p.status = "paid"
+            p.credits = 2
+        db.session.commit()
+    return jsonify({"ok": True}), 200
+
+@app.route('/check-payment/<id>')
+def check_payment(id):
+    p = Payment.query.get(id)
+    if p and p.status == "paid": return jsonify({"status": "paid", "credits": p.credits})
+    try:
+        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
+        res = requests.get(f"{BASE_URL}/payment/status/{id}/", headers=headers)
+        if res.json().get("invoice", {}).get("state") == "COMPLETE":
+            if not p: p = Payment(id=id, status="paid", credits=2)
+            else:
+                p.status = "paid"
+                p.credits = 2
+            db.session.add(p)
+            db.session.commit()
+            return jsonify({"status": "paid", "credits": 2})
+    except: pass
+    return jsonify({"status": "pending"})
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
