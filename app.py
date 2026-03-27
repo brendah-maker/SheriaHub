@@ -38,23 +38,25 @@ BASE_URL = "https://api.intasend.com/api/v1" if IS_LIVE else "https://sandbox.in
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# --- 3. MKATABACHECK ROUTE (WITH PAYWALL) ---
+# --- 3. MKATABACHECK ROUTE ---
 @app.route('/audit-contract', methods=['POST'])
 def audit_contract():
     try:
         if 'file' not in request.files:
-            return jsonify({"error": "No file uploaded"}), 400
+            return jsonify({"error": "No file selected"}), 400
         
         file = request.files['file']
         checkout_id = request.form.get("checkout_id")
 
         # Credit Logic
         is_paid = False
+        credits_left = 0
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if payment and payment.status == "paid" and payment.credits > 0:
                 is_paid = True
                 payment.credits -= 1
+                credits_left = payment.credits
                 db.session.commit()
 
         # Extract Text
@@ -62,16 +64,16 @@ def audit_contract():
             contract_text = " ".join([page.extract_text() or "" for page in pdf.pages])
 
         if not contract_text.strip():
-            return jsonify({"error": "Could not read PDF text."}), 400
+            return jsonify({"error": "PDF is unreadable or empty"}), 400
 
         # AI Prompt (JSON Format)
         system_msg = (
             "You are an expert Kenyan Legal Auditor. Analyze the contract and return ONLY valid JSON: "
             "{"
-            "  'risk_summary': '2-sentence summary of the document safety',"
-            "  'red_flags': ['list', 'of', '3-4', 'risks'],"
-            "  'full_analysis': 'Deep dive into legal clauses and specific section citations',"
-            "  'recommendations': 'Step-by-step instructions on how to fix or negotiate this contract'"
+            "  'risk_summary': 'string (2 sentences)',"
+            "  'red_flags': ['list of strings'],"
+            "  'full_analysis': 'string',"
+            "  'recommendations': 'string'"
             "}"
         )
 
@@ -86,17 +88,16 @@ def audit_contract():
         
         ai_data = json.loads(completion.choices[0].message.content)
 
-        # Filtered Response
         response = {
             "is_paid": is_paid,
-            "risk_summary": ai_data.get("risk_summary"),
-            "red_flags": ai_data.get("red_flags"),
+            "risk_summary": ai_data.get("risk_summary", "Analysis complete."),
+            "red_flags": ai_data.get("red_flags", []),
         }
 
         if is_paid:
-            response["full_analysis"] = ai_data.get("full_analysis")
-            response["recommendations"] = ai_data.get("recommendations")
-            response["credits_left"] = payment.credits
+            response["full_analysis"] = ai_data.get("full_analysis", "No data")
+            response["recommendations"] = ai_data.get("recommendations", "No data")
+            response["credits_left"] = credits_left
         
         return jsonify(response)
     except Exception as e:
@@ -161,7 +162,7 @@ def stk_push():
             db.session.add(Payment(id=inv_id, status="pending", credits=0))
             db.session.commit()
             return jsonify({"checkout_id": inv_id})
-        return jsonify({"error": "Failed"}), 400
+        return jsonify({"error": "IntaSend Rejected"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
