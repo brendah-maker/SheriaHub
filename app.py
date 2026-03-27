@@ -38,24 +38,41 @@ BASE_URL = "https://api.intasend.com/api/v1" if IS_LIVE else "https://sandbox.in
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# --- 3. AUDIT CONTRACT ROUTE (THE MISSING ONE) ---
+# --- 3. MKATABACHECK ROUTE (WITH PAYWALL) ---
 @app.route('/audit-contract', methods=['POST'])
 def audit_contract():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
-    
-    file = request.files['file']
     try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+        
+        file = request.files['file']
+        checkout_id = request.form.get("checkout_id")
+
+        # Credit Logic
+        is_paid = False
+        if checkout_id and checkout_id != "undefined":
+            payment = Payment.query.get(checkout_id)
+            if payment and payment.status == "paid" and payment.credits > 0:
+                is_paid = True
+                payment.credits -= 1
+                db.session.commit()
+
+        # Extract Text
         with pdfplumber.open(io.BytesIO(file.read())) as pdf:
             contract_text = " ".join([page.extract_text() or "" for page in pdf.pages])
 
         if not contract_text.strip():
-            return jsonify({"analysis": "❌ Could not read text from this PDF."})
+            return jsonify({"error": "Could not read PDF text."}), 400
 
+        # AI Prompt (JSON Format)
         system_msg = (
-            "You are an expert Kenyan Legal Auditor. Analyze the contract for: "
-            "1. ILLEGAL CLAUSES, 2. HIDDEN RISKS, 3. TERMINATION TERMS. "
-            "Use clear sections."
+            "You are an expert Kenyan Legal Auditor. Analyze the contract and return ONLY valid JSON: "
+            "{"
+            "  'risk_summary': '2-sentence summary of the document safety',"
+            "  'red_flags': ['list', 'of', '3-4', 'risks'],"
+            "  'full_analysis': 'Deep dive into legal clauses and specific section citations',"
+            "  'recommendations': 'Step-by-step instructions on how to fix or negotiate this contract'"
+            "}"
         )
 
         completion = client.chat.completions.create(
@@ -63,9 +80,25 @@ def audit_contract():
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": f"Audit: {contract_text[:4000]}"}
-            ]
+            ],
+            response_format={ "type": "json_object" }
         )
-        return jsonify({"analysis": completion.choices[0].message.content})
+        
+        ai_data = json.loads(completion.choices[0].message.content)
+
+        # Filtered Response
+        response = {
+            "is_paid": is_paid,
+            "risk_summary": ai_data.get("risk_summary"),
+            "red_flags": ai_data.get("red_flags"),
+        }
+
+        if is_paid:
+            response["full_analysis"] = ai_data.get("full_analysis")
+            response["recommendations"] = ai_data.get("recommendations")
+            response["credits_left"] = payment.credits
+        
+        return jsonify(response)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -146,9 +179,6 @@ def check_payment(id):
             return jsonify({"status": "paid", "credits": 2})
     except: pass
     return jsonify({"status": "pending"})
-
-@app.route('/health')
-def health(): return jsonify({"ok": True})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
