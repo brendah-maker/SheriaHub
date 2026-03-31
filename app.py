@@ -4,20 +4,25 @@ from flask_cors import CORS
 from groq import Groq
 
 app = Flask(__name__)
+# This line ensures your frontend can talk to your backend
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- 1. API KEYS ---
+# --- 1. API KEY ---
+# Ensure your GROQ_API_KEY is set in Render Environment Variables
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
+@app.route('/')
 @app.route('/health')
 def health():
     return jsonify({"status": "Healthy", "mode": "FREE_ACCESS"}), 200
 
-# --- 2. THE SIMPLIFIED "OPEN" AI LOGIC ---
+# --- 2. THE SIMPLE "FREE" AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
-    if not client: return jsonify({"error": "AI not initialized"}), 500
+    if not client: 
+        return jsonify({"error": "AI not initialized. Check your API Key."}), 500
+    
     try:
         data = request.get_json()
         question = data.get("question", "")
@@ -32,12 +37,12 @@ def ask_ai():
             "civil_criminal": "Civil & Criminal Law"
         }
             
-        # Updated Prompt: Just ask for the full, expert answer
+        # Simplified prompt for full, free access
         system_msg = (
             f"You are a leading Kenyan legal expert specialized in {law_map.get(category)}. "
-            "Provide a comprehensive, professional, and helpful response to the user's question. "
-            "Include specific references to Kenyan Acts, Section numbers, and the exact steps the user "
-            "should take (e.g., which court or tribunal to visit). Format the response clearly."
+            "Provide a comprehensive, professional, and helpful response. "
+            "Include specific references to Kenyan Acts, Section numbers, and the exact steps "
+            "the user should take. Format the response with clear headings."
         )
 
         completion = client.chat.completions.create(
@@ -46,18 +51,19 @@ def ask_ai():
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": question}
             ],
-            temperature=0.2 # Slightly more creative for better legal explanations
+            temperature=0.1
         )
         
         full_response = completion.choices[0].message.content
 
-        # Return everything as 'content'
+        # Sending back the summary and the content
         return jsonify({
             "status": "free",
-            "summary": "Full Legal Consultation",
-            "content": full_response # The user sees the full Deep Dive immediately
+            "summary": "Legal Analysis Complete",
+            "content": full_response
         })
     except Exception as e:
+        print(f"ERROR: {str(e)}") # This shows in Render Logs
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
