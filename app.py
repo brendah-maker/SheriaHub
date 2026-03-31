@@ -20,7 +20,7 @@ def health():
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client: 
-        return jsonify({"error": "AI not initialized. Check your API Key."}), 500
+        return jsonify({"error": "AI not initialized"}), 500
     
     try:
         data = request.get_json()
@@ -36,12 +36,10 @@ def ask_ai():
             "civil_criminal": "Civil & Criminal Law"
         }
             
-        # Simplified prompt to get a single, professional legal response
         system_msg = (
             f"You are a leading Kenyan legal expert specialized in {law_map.get(category)}. "
-            "Provide a comprehensive professional analysis regarding the user's query. "
-            "Include specific Kenyan Acts, relevant Section numbers, and clear, "
-            "step-by-step guidance for the user."
+            "Provide a comprehensive professional analysis. Include specific Kenyan Acts, "
+            "Section numbers, and a step-by-step guide."
         )
 
         completion = client.chat.completions.create(
@@ -53,17 +51,15 @@ def ask_ai():
             temperature=0.1 
         )
         
-        # Get the full feedback text
-        ai_feedback = completion.choices[0].message.content.strip()
+        ai_response = completion.choices[0].message.content.strip()
 
-        # Send the direct AI feedback back to your frontend
+        # We are sending the key "answer"
         return jsonify({
             "status": "success",
-            "answer": ai_feedback
+            "answer": ai_response
         })
 
     except Exception as e:
-        print(f"Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
