@@ -49,6 +49,7 @@ def health():
 
 
 # --- 3. THE UPDATED "GATED" AI LOGIC ---
+
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client: return jsonify({"error": "AI not initialized"}), 500
@@ -61,7 +62,7 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
-        # ... (Payment verification logic remains exactly the same) ...
+        # --- Payment logic (Keep your existing database check here) ---
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if not payment:
@@ -89,48 +90,54 @@ def ask_ai():
             "civil_criminal": "Civil & Criminal Law"
         }
             
-        # --- NEW AGGRESSIVE SYSTEM PROMPT ---
+        # --- IMPROVED SYSTEM PROMPT ---
         system_msg = (
-            f"You are a dual-persona legal assistant specialized in Kenyan {law_map.get(category)}.\n\n"
-            "PART 1 (The Summary): Act as an Intake Clerk. Briefly acknowledge the user's issue and state that Kenyan Law provides specific protections for this. "
-            "FORBIDDEN: You MUST NOT name any Acts (e.g. 'Rent Restriction Act'), Section numbers, or specific legal tests. "
-            "GOAL: Validate the user's concern in 2 short sentences and mention that full details are in the Deep Dive.\n\n"
+            f"You are a legal intake assistant for Kenyan {law_map.get(category)}. "
+            "Your response MUST be divided by the exact string '|||'.\n\n"
+            "PART 1 (FREE SUMMARY): Write exactly 2 sentences. Acknowledge the user's problem. "
+            "STRICT FORBIDDEN LIST: Never mention 'Act', 'Section', '2007', '1996', or any law names. "
+            "Simply state that the law provides protection and the Deep Dive contains the exact steps to take.\n\n"
             "|||\n\n"
-            "PART 2 (The Deep Dive): Act as a Senior Advocate. Provide the technical heavy lifting, specific Act citations, Section numbers, and the step-by-step court/tribunal filing process."
+            "PART 2 (PAID DEEP DIVE): Provide the full legal advice, citing specific Acts and Sections."
         )
 
+        # FIX 1: Set temperature=0 for consistency
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": question}
-            ]
+            ],
+            temperature=0.0 # <--- This stops it from giving different answers
         )
         
         full_text = completion.choices[0].message.content
         
-        # --- ROBUST SPLITTING & CLEANING ---
+        # --- ROBUST SPLITTING ---
         if "|||" in full_text:
             parts = full_text.split("|||")
             summary = parts[0].strip()
             deep_dive = parts[1].strip()
         else:
-            # Emergency split: if AI fails to use |||, we take the first 150 chars as summary
-            summary = full_text[:150] + "..."
+            # Fallback if AI ignores separator
+            summary = "We have identified potential legal grounds for your case. Details are in the Deep Dive."
             deep_dive = full_text
 
-        # Final safety scrub: Remove any common legal Act names if they leaked into the summary
-        bad_words = ["Act 2007", "Act 19", "Section", "Chapter", "Constitution"]
-        for word in bad_words:
+        # FIX 2: Backend Sanitizer (Remove any leaked law names automatically)
+        leaks = ["Act", "Section", "Chapter", "Constitution", "2007", "1996", "2010", "1971"]
+        for word in leaks:
             if word in summary:
-                summary = summary.split(word)[0] + "... [Details available in Deep Dive]"
+                # If a law name leaked, cut the sentence there and add a teaser
+                summary = summary.split(word)[0] + "... [Specific legal citations available in the Deep Dive]"
+                break
 
         # --- THE GATED RETURN ---
         return jsonify({
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
-            "summary": summary,
-            "content": deep_dive if is_paid else "🔒 **Unlock the Deep Dive** to see the specific legal Acts, Section citations, and a step-by-step guide on how to file your case in court or at the relevant Tribunal."
+            "summary": summary, # Always short and vague
+            # Fix 3: Content is strictly gated. If not paid, deep_dive is NEVER sent.
+            "content": deep_dive if is_paid else "🔒 **Unlock the Deep Dive** to see the specific legal Acts, Section numbers, and a step-by-step guide on how to file your case for just KES 20."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
