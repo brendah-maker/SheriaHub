@@ -132,8 +132,6 @@
     </footer>
 
 <script>
-
-    
     const API = "https://sheriahub.onrender.com"; 
     let cat = "tenant";
     let lastQ = "";
@@ -173,15 +171,16 @@
             });
             const data = await response.json();
 
-            // Updated to look for 'answer' from the updated backend
+            // FIX: We now check for 'data.answer' (the new backend format)
             if (!data || !data.answer) {
                 resDiv.innerHTML = `<p style='color:red;text-align:center;'>Something went wrong. Please try again.</p>`;
                 return;
             }
 
-            // Displays only the AI feedback in a clean card without labels
+            // Displays the feedback using your existing 'premium-content' style
+            // We use white-space: pre-wrap to keep the AI's formatting
             resDiv.innerHTML = `
-                <div class="premium-content" style="margin-top: 25px;">${data.answer}</div>
+                <div class="premium-content" style="white-space: pre-wrap;">${data.answer}</div>
             `;
             resDiv.scrollIntoView({ behavior: 'smooth' });
 
@@ -190,7 +189,6 @@
         } finally { btn.disabled = false; }
     }
 </script>
-    
 
 </body>
 </html>
