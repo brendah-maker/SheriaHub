@@ -62,7 +62,7 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
-        # --- Payment Verification (Keep your existing logic) ---
+        # --- 1. Payment Logic (Remains the same) ---
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if not payment:
@@ -81,70 +81,54 @@ def ask_ai():
                 db.session.commit()
 
         law_map = {
-            "employment": "Employment Law",
-            "land": "Land & Property Law",
-            "family": "Family & Children Law",
-            "traffic": "Traffic Law",
-            "tenant": "Tenancy Law",
-            "civil_criminal": "Civil & Criminal Law"
+            "employment": "Employment Law", "land": "Land Law", "family": "Family Law",
+            "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil/Criminal Law"
         }
             
-        # --- 1. AGGRESSIVE SYSTEM PROMPT ---
-        # We tell the AI it will FAIL if it gives specific laws in Part 1.
+        # --- 2. THE STRICTOR "FEW-SHOT" PROMPT ---
         system_msg = (
-            f"You are a legal intake clerk for Kenyan {law_map.get(category)}. "
-            "You MUST split your response with '|||'.\n\n"
-            "PART 1 (FREE TEASER): Provide exactly 2 vague sentences. Acknowledge the problem and state that legal remedies exist. "
-            "STRICT PROHIBITION: Do NOT name any Acts, Sections, or specific government bodies (like NEMA). "
-            "Do NOT provide advice. Just confirm that a legal solution is available in the Deep Dive.\n\n"
+            f"You are a Kenyan {law_map.get(category)} intake bot. You MUST split your response with '|||'.\n\n"
+            "PART 1 (FREE SUMMARY): Be vague. Max 2 sentences. Never mention Acts, Sections, or Years.\n"
+            "Example: 'It sounds like you have a dispute. Kenyan law provides protections for this, which are detailed in the Deep Dive below.'\n\n"
             "|||\n\n"
-            "PART 2 (PAID CONSULTATION): Provide the full legal analysis, citing specific Acts (e.g., Rent Restriction Act), Sections, and court procedures."
+            "PART 2 (PAID DEEP DIVE): Provide full technical legal advice with specific Act and Section citations."
         )
 
-        # --- 2. FORCED CONSISTENCY (Temperature 0) ---
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
             messages=[
                 {"role": "system", "content": system_msg},
-                {"role": "user", "content": question}
+                {"role": "user", "content": f"User question: {question}. REMEMBER: Do NOT give citations in Part 1."}
             ],
-            temperature=0.0 # This ensures the answer doesn't change every time
+            temperature=0.0 # Force consistency
         )
         
         full_text = completion.choices[0].message.content
         
-        # --- 3. ROBUST SPLITTING ---
+        # --- 3. AGGRESSIVE BACKEND CLEANING ---
         if "|||" in full_text:
             parts = full_text.split("|||")
             summary = parts[0].strip()
             deep_dive = parts[1].strip()
         else:
-            # Fallback if AI ignores instructions
-            summary = "We have analyzed your situation. Specific legal protections apply to your case."
+            # Fallback if split fails
+            summary = "We have analyzed your query. Full legal details are available in the Deep Dive."
             deep_dive = full_text
 
-        # --- 4. BACKEND SANITIZER (The "Hammer") ---
-        # If the AI leaked any legal keywords into the summary, we cut it off.
-        leak_keywords = ["Act", "Section", "Law of", "Constitution", "2010", "1996", "NEMA", "Tribunal", "Court"]
-        clean_summary = []
-        # Take only the first two sentences to ensure it stays a 'summary'
-        sentences = summary.split('.')[:2] 
-        for sentence in sentences:
-            if not any(word in sentence for word in leak_keywords):
-                clean_summary.append(sentence.strip())
+        # REMOVE ANY LEAKED HEADERS
+        summary = re.sub(r'^(Summary|PART 1|Overview):', '', summary, flags=re.IGNORECASE).strip()
         
-        # If the AI leaked too much, replace with a generic hook
-        final_summary = ". ".join(clean_summary) + "."
-        if len(final_summary) < 20 or any(word in final_summary for word in leak_keywords):
-            final_summary = "It appears you have a valid legal concern. Kenyan law provides specific protections for this situation which are outlined in the deep dive."
+        # FORCE LENGTH LIMIT (The 'Hammer')
+        # If the AI gives more than 200 chars in a summary, we cut it off.
+        if len(summary) > 200:
+            summary = summary[:180] + "... [Details hidden in Deep Dive]"
 
-        # --- 5. THE PAYWALL RETURN ---
+        # --- 4. THE PAYWALL ---
         return jsonify({
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
-            "summary": final_summary,
-            # 'content' is strictly GATED. Free users NEVER receive the deep_dive data.
-            "content": deep_dive if is_paid else "🔒 **Pay KES 20 to Unlock:** Get the full legal breakdown including specific Acts, Sections, and the exact steps to file your case in court."
+            "summary": summary,
+            "content": deep_dive if is_paid else "🔒 **Unlock the Deep Dive** to see specific legal Acts (e.g. Employment Act), Sections, and step-by-step court procedures for just KES 20."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
