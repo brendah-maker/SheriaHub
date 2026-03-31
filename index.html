@@ -132,6 +132,8 @@
     </footer>
 
 <script>
+
+    
     const API = "https://sheriahub.onrender.com"; 
     let cat = "tenant";
     let lastQ = "";
@@ -171,17 +173,15 @@
             });
             const data = await response.json();
 
-            if (!data || !data.summary) {
+            // Updated to look for 'answer' from the updated backend
+            if (!data || !data.answer) {
                 resDiv.innerHTML = `<p style='color:red;text-align:center;'>Something went wrong. Please try again.</p>`;
                 return;
             }
 
-            // CLEAN FIX: Removed the status check. 
-            // Now it always displays both the Summary and the Deep-Dive Result.
-            const formattedContent = data.content.replace(/\n/g, '<br>');
+            // Displays only the AI feedback in a clean card without labels
             resDiv.innerHTML = `
-                <div class="legal-card"><strong>Summary:</strong><br>${data.summary}</div>
-                <div class="premium-content"><h3>📋 Full Deep-Dive Result</h3>${formattedContent}</div>
+                <div class="premium-content" style="margin-top: 25px;">${data.answer}</div>
             `;
             resDiv.scrollIntoView({ behavior: 'smooth' });
 
@@ -190,5 +190,7 @@
         } finally { btn.disabled = false; }
     }
 </script>
+    
+
 </body>
 </html>
