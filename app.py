@@ -11,10 +11,11 @@ from sqlalchemy import text
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --- 1. DATABASE ---
+# --- 1. DATABASE CONFIGURATION ---
 uri = os.getenv("DATABASE_URL", "sqlite:///sheriahub.db")
 if uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -26,18 +27,27 @@ class Payment(db.Model):
 
 with app.app_context():
     db.create_all()
+    try:
+        db.session.execute(text("ALTER TABLE payment ADD COLUMN credits INTEGER DEFAULT 0"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
-# --- 2. CONFIG ---
+# --- 2. API KEYS ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY", "").strip()
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY", "").strip()
-# IMPORTANT: Make sure this is False in Render environment variables for Live mode
 IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
 BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# --- 3. HARD-GATED AI LOGIC ---
+@app.route('/')
+@app.route('/health')
+def health():
+    return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
+
+# --- 3. THE "GATED" AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client: return jsonify({"error": "AI not initialized"}), 500
@@ -50,7 +60,6 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
-        # Payment verification
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if not payment:
@@ -62,53 +71,61 @@ def ask_ai():
                         db.session.add(payment)
                         db.session.commit()
                 except: pass
+
             if payment and payment.status == "paid" and payment.credits > 0:
                 is_paid = True
                 payment.credits -= 1
                 credits_left = payment.credits
                 db.session.commit()
 
-        law_map = {"employment": "Employment Law", "land": "Land Law", "family": "Family Law", "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil/Criminal Law"}
+        law_map = {
+            "employment": "Employment Law",
+            "land": "Land & Property Law",
+            "family": "Family & Children Law",
+            "traffic": "Traffic Law",
+            "tenant": "Tenancy Law",
+            "civil_criminal": "Civil & Criminal Law"
+        }
             
         system_msg = (
-            f"You are a Kenyan {law_map.get(category)} intake clerk. "
-            "Split your response with '|||'.\n\n"
-            "PART 1 (FREE): Exactly 1 vague sentence acknowledging the problem. NO Acts, NO Sections, NO Years.\n"
-            "|||\n\n"
-            "PART 2 (PAID): Full detailed advice with Act/Section citations."
+            f"You are a Kenyan legal expert on {law_map.get(category)}. "
+            "You MUST follow these rules for the response:\n"
+            "1. Start with 'SUMMARY: ' followed by a helpful 1-2 sentence overview. NEVER mention specific Act names or Section numbers here.\n"
+            "2. Then write 'DEEP_DIVE: ' followed by the full details, including Sections, Acts, Court names, and Steps."
         )
 
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
-            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": question}],
-            temperature=0.0
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": question}
+            ]
         )
         
         full_text = completion.choices[0].message.content
-        summary = full_text.split("|||")[0].strip() if "|||" in full_text else full_text[:100]
-        deep_dive = full_text.split("|||")[1].strip() if "|||" in full_text else ""
-
-        # --- THE SUMMARY SANITIZER (Protects your content) ---
-        if not is_paid:
-            # Physically delete legal words if they leaked into the summary
-            forbidden = ["Act", "Section", "2007", "1996", "2010", "Constitution", "Chapter", "Revised"]
-            for word in forbidden:
-                if word in summary:
-                    summary = summary.split(word)[0].strip() + "... [Full analysis available in Deep Dive]"
-            # Force brevity: cut off at 140 chars
-            if len(summary) > 140:
-                summary = summary[:130] + "... [Details in Deep Dive]"
+        summary = ""
+        deep_dive = ""
+        
+        # Robust Clean Split
+        clean_txt = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
+        if "DEEP_DIVE:" in clean_txt:
+            parts = clean_txt.split("DEEP_DIVE:")
+            summary = parts[0].replace("SUMMARY:", "").strip()
+            deep_dive = parts[1].strip()
+        else:
+            summary = full_text.split('.')[0] + "."
+            deep_dive = full_text
 
         return jsonify({
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
             "summary": summary,
-            "content": deep_dive if is_paid else "🔒 Unlock the Deep Dive: Get specific legal Acts, Sections, and court procedures for KES 20."
+            "content": deep_dive if is_paid else "🔒 Payment required for specific Acts, Section citations, and step-by-step court filing guides."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- 4. DEBUGGED STK PUSH ---
+# --- 4. PAYMENT ROUTES ---
 @app.route('/stkpush', methods=['POST'])
 def stk_push():
     try:
@@ -120,25 +137,19 @@ def stk_push():
         payload = {"public_key": INTASEND_PUBLISHABLE_KEY, "amount": 20, "phone_number": phone, "api_ref": "SheriaHub"}
         headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}", "Content-Type": "application/json"}
         
-        # This will send the request to IntaSend
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
+        res_data = res.json()
         
-        # --- LOGGING: Look at your Render console for this! ---
-        print(f"INTASEND DEBUG: Status {res.status_code}, Body: {res.text}")
-        
-        if res.status_code != 200:
-            return jsonify({"error": "Payment rejected", "debug": res.json()}), 400
-            
-        inv_id = res.json().get("invoice", {}).get("invoice_id")
+        inv_id = res_data.get("invoice", {}).get("invoice_id")
         if inv_id:
             db.session.add(Payment(id=inv_id, status="pending", credits=0))
             db.session.commit()
             return jsonify({"checkout_id": inv_id})
-        return jsonify({"error": "Failed"}), 400
+        return jsonify({"error": "Rejected"}), 400
     except Exception as e:
-        print(f"CRITICAL ERROR: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+# FIX: Added Callback Route back in
 @app.route('/api/callback', methods=['POST'])
 def callback():
     data = request.get_json()
@@ -156,6 +167,18 @@ def callback():
 def check_payment(id):
     p = Payment.query.get(id)
     if p and p.status == "paid": return jsonify({"status": "paid", "credits": p.credits})
+    try:
+        headers = {"Authorization": f"Bearer {INTASEND_SECRET_KEY}"}
+        res = requests.get(f"{BASE_URL}/payment/status/{id}/", headers=headers)
+        if res.json().get("invoice", {}).get("state") == "COMPLETE":
+            if not p: p = Payment(id=id, status="paid", credits=2)
+            else:
+                p.status = "paid"
+                p.credits = 2
+            db.session.add(p)
+            db.session.commit()
+            return jsonify({"status": "paid", "credits": 2})
+    except: pass
     return jsonify({"status": "pending"})
 
 if __name__ == '__main__':
