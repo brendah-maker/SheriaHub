@@ -9,6 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 
 app = Flask(__name__)
+# Replace '*' with your specific domain in production for better security
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # --- 1. DATABASE CONFIGURATION ---
@@ -27,29 +28,22 @@ class Payment(db.Model):
 
 with app.app_context():
     db.create_all()
-    try:
-        db.session.execute(text("ALTER TABLE payment ADD COLUMN credits INTEGER DEFAULT 0"))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
 
-# --- 2. API KEYS ---
+# --- 2. API KEYS & CONFIG ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 INTASEND_PUBLISHABLE_KEY = os.getenv("INTASEND_PUBLISHABLE_KEY", "").strip()
 INTASEND_SECRET_KEY = os.getenv("INTASEND_SECRET_KEY", "").strip()
-IS_SANDBOX = os.getenv("IS_SANDBOX", "False").lower() == "true"
+# Set this to False in your Environment Variables for Live mode
+IS_SANDBOX = os.getenv("IS_SANDBOX", "True").lower() == "true"
 BASE_URL = "https://sandbox.intasend.com/api/v1" if IS_SANDBOX else "https://api.intasend.com/api/v1"
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-@app.route('/')
 @app.route('/health')
 def health():
     return jsonify({"status": "Healthy", "mode": "SANDBOX" if IS_SANDBOX else "LIVE"}), 200
 
-
-# --- 3. THE UPDATED "GATED" AI LOGIC ---
-
+# --- 3. THE "HARD-GATED" AI LOGIC ---
 @app.route('/ask-ai', methods=['POST'])
 def ask_ai():
     if not client: return jsonify({"error": "AI not initialized"}), 500
@@ -62,7 +56,7 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
-        # --- 1. Payment Logic (Remains the same) ---
+        # --- Payment Verification ---
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if not payment:
@@ -74,6 +68,7 @@ def ask_ai():
                         db.session.add(payment)
                         db.session.commit()
                 except: pass
+
             if payment and payment.status == "paid" and payment.credits > 0:
                 is_paid = True
                 payment.credits -= 1
@@ -81,54 +76,63 @@ def ask_ai():
                 db.session.commit()
 
         law_map = {
-            "employment": "Employment Law", "land": "Land Law", "family": "Family Law",
-            "traffic": "Traffic Law", "tenant": "Tenancy Law", "civil_criminal": "Civil/Criminal Law"
+            "employment": "Employment Law",
+            "land": "Land & Property Law",
+            "family": "Family & Children Law",
+            "traffic": "Traffic Law",
+            "tenant": "Tenancy Law",
+            "civil_criminal": "Civil & Criminal Law"
         }
             
-        # --- 2. THE STRICTOR "FEW-SHOT" PROMPT ---
+        # --- Aggressive System Prompt ---
         system_msg = (
-            f"You are a Kenyan {law_map.get(category)} intake bot. You MUST split your response with '|||'.\n\n"
-            "PART 1 (FREE SUMMARY): Be vague. Max 2 sentences. Never mention Acts, Sections, or Years.\n"
-            "Example: 'It sounds like you have a dispute. Kenyan law provides protections for this, which are detailed in the Deep Dive below.'\n\n"
+            f"You are a legal intake clerk for Kenyan {law_map.get(category)}. "
+            "You MUST split your response with the exact marker '|||'.\n\n"
+            "PART 1 (FREE SUMMARY): Provide exactly 1-2 vague sentences acknowledging the problem. "
+            "STRICT PROHIBITION: Do NOT list steps, do NOT name Acts/Sections, and do NOT give advice. "
+            "Simply state that the law provides protection for this situation.\n\n"
             "|||\n\n"
-            "PART 2 (PAID DEEP DIVE): Provide full technical legal advice with specific Act and Section citations."
+            "PART 2 (PAID DEEP DIVE): Provide the full technical legal advice, specific Act citations, and filing steps."
         )
 
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
             messages=[
                 {"role": "system", "content": system_msg},
-                {"role": "user", "content": f"User question: {question}. REMEMBER: Do NOT give citations in Part 1."}
+                {"role": "user", "content": f"User's legal issue: {question}. REMEMBER: Keep Part 1 extremely short and general."}
             ],
-            temperature=0.0 # Force consistency
+            temperature=0.0 # Stop the AI from being 'creative' or 'helpful' for free
         )
         
         full_text = completion.choices[0].message.content
+        summary = ""
+        deep_dive = ""
         
-        # --- 3. AGGRESSIVE BACKEND CLEANING ---
+        # --- Robust Splitting ---
         if "|||" in full_text:
             parts = full_text.split("|||")
             summary = parts[0].strip()
             deep_dive = parts[1].strip()
         else:
-            # Fallback if split fails
-            summary = "We have analyzed your query. Full legal details are available in the Deep Dive."
+            # Fallback if AI ignores formatting
+            summary = "We have identified potential legal protections for your situation. Please see the deep dive for specific steps."
             deep_dive = full_text
 
-        # REMOVE ANY LEAKED HEADERS
-        summary = re.sub(r'^(Summary|PART 1|Overview):', '', summary, flags=re.IGNORECASE).strip()
+        # --- Backend Sanitizer (The "Hammer") ---
+        # 1. Remove common headers the AI might add
+        summary = re.sub(r'^(Summary|Part 1|Overview|Introduction):', '', summary, flags=re.IGNORECASE).strip()
         
-        # FORCE LENGTH LIMIT (The 'Hammer')
-        # If the AI gives more than 200 chars in a summary, we cut it off.
-        if len(summary) > 200:
-            summary = summary[:180] + "... [Details hidden in Deep Dive]"
+        # 2. Force-Truncate Summary: If the summary is more than 160 characters, it's not a summary anymore.
+        if len(summary) > 160:
+            summary = summary[:150] + "... [Details available in Deep Dive]"
 
-        # --- 4. THE PAYWALL ---
+        # --- GATED RETURN ---
         return jsonify({
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
-            "summary": summary,
-            "content": deep_dive if is_paid else "🔒 **Unlock the Deep Dive** to see specific legal Acts (e.g. Employment Act), Sections, and step-by-step court procedures for just KES 20."
+            "summary": summary, # Sent to everyone
+            # 'content' is PHYSICALLY REMOVED from the packet if not paid
+            "content": deep_dive if is_paid else "🔒 Unlock the Deep Dive: Get the specific legal Acts, Sections, and a step-by-step court filing guide for KES 20."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -148,16 +152,18 @@ def stk_push():
         res = requests.post(f"{BASE_URL}/payment/mpesa-stk-push/", json=payload, headers=headers)
         res_data = res.json()
         
+        if res.status_code != 200:
+            return jsonify({"error": res_data.get("errors", "M-Pesa push rejected")}), 400
+            
         inv_id = res_data.get("invoice", {}).get("invoice_id")
         if inv_id:
             db.session.add(Payment(id=inv_id, status="pending", credits=0))
             db.session.commit()
             return jsonify({"checkout_id": inv_id})
-        return jsonify({"error": "Rejected"}), 400
+        return jsonify({"error": "Failed to create invoice"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# FIX: Added Callback Route back in
 @app.route('/api/callback', methods=['POST'])
 def callback():
     data = request.get_json()
@@ -185,7 +191,7 @@ def check_payment(id):
                 p.credits = 2
             db.session.add(p)
             db.session.commit()
-            return jsonify({"status": "paid", "credits": 2})
+            return jsonify({"status": "paid", "credits": p.credits})
     except: pass
     return jsonify({"status": "pending"})
 
