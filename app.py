@@ -60,6 +60,7 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
+        # --- Payment Verification Logic ---
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if not payment:
@@ -87,11 +88,15 @@ def ask_ai():
             "civil_criminal": "Civil & Criminal Law"
         }
             
+        # --- STRENGTHENED SYSTEM MESSAGE ---
+        # We use explicit tags and extreme warnings to prevent leakage.
         system_msg = (
             f"You are a Kenyan legal expert on {law_map.get(category)}. "
-            "You MUST follow these rules for the response:\n"
-            "1. Start with 'SUMMARY: ' followed by a helpful 1-2 sentence overview. NEVER mention specific Act names or Section numbers here.\n"
-            "2. Then write 'DEEP_DIVE: ' followed by the full details, including Sections, Acts, Court names, and Steps."
+            "You MUST split your response into TWO distinct parts using these EXACT headers:\n\n"
+            "PART_1_SUMMARY: Provide a 2-sentence general overview. "
+            "CRITICAL: DO NOT mention any Acts (e.g., 'Employment Act'), Section numbers, or specific legal citations here. "
+            "Keep it vague and conversational for a layperson.\n\n"
+            "PART_2_DEEP_DIVE: Provide the full technical legal details, citing specific Sections, Acts, and step-by-step court procedures."
         )
 
         completion = client.chat.completions.create(
@@ -103,24 +108,26 @@ def ask_ai():
         )
         
         full_text = completion.choices[0].message.content
-        summary = ""
-        deep_dive = ""
+        summary = "No summary generated."
+        deep_dive = "No details generated."
         
-        # Robust Clean Split
-        clean_txt = full_text.replace("**SUMMARY:**", "SUMMARY:").replace("**DEEP_DIVE:**", "DEEP_DIVE:")
-        if "DEEP_DIVE:" in clean_txt:
-            parts = clean_txt.split("DEEP_DIVE:")
-            summary = parts[0].replace("SUMMARY:", "").strip()
-            deep_dive = parts[1].strip()
+        # --- ROBUST PARSING ---
+        if "PART_2_DEEP_DIVE" in full_text:
+            parts = full_text.split("PART_2_DEEP_DIVE")
+            summary = parts[0].replace("PART_1_SUMMARY:", "").strip()
+            deep_dive = parts[1].strip().lstrip(':').strip()
         else:
-            summary = full_text.split('.')[0] + "."
+            # Fallback if AI messes up headers
+            summary = full_text[:200] + "..." 
             deep_dive = full_text
 
+        # --- GATED RETURN ---
         return jsonify({
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
             "summary": summary,
-            "content": deep_dive if is_paid else "🔒 Payment required for specific Acts, Section citations, and step-by-step court filing guides."
+            # If not paid, deep_dive is NEVER sent to the browser
+            "content": deep_dive if is_paid else "🔒 Payment required to view specific Acts, Section citations, and step-by-step court filing guides."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
