@@ -60,7 +60,7 @@ def ask_ai():
         is_paid = False
         credits_left = 0
 
-        # --- Payment Verification Logic ---
+        # --- Payment Check (Logic remains the same) ---
         if checkout_id and checkout_id != "undefined":
             payment = Payment.query.get(checkout_id)
             if not payment:
@@ -88,15 +88,15 @@ def ask_ai():
             "civil_criminal": "Civil & Criminal Law"
         }
             
-        # --- STRENGTHENED SYSTEM MESSAGE ---
-        # We use explicit tags and extreme warnings to prevent leakage.
+        # --- IMPROVED SYSTEM PROMPT ---
+        # Note: We now use a unique separator '|||' to make splitting foolproof
         system_msg = (
             f"You are a Kenyan legal expert on {law_map.get(category)}. "
-            "You MUST split your response into TWO distinct parts using these EXACT headers:\n\n"
-            "PART_1_SUMMARY: Provide a 2-sentence general overview. "
-            "CRITICAL: DO NOT mention any Acts (e.g., 'Employment Act'), Section numbers, or specific legal citations here. "
-            "Keep it vague and conversational for a layperson.\n\n"
-            "PART_2_DEEP_DIVE: Provide the full technical legal details, citing specific Sections, Acts, and step-by-step court procedures."
+            "You MUST format your response into two parts separated by '|||'.\n\n"
+            "PART 1 (The Summary): Provide a helpful 2-sentence overview. "
+            "STRICT RULE: Do NOT mention specific Acts, Sections, or citations here. Do NOT mention 'Employment Act 2007' or similar details. Keep it general.\n\n"
+            "|||\n\n"
+            "PART 2 (The Deep Dive): Provide the full technical legal details, citing Sections, Acts, and step-by-step procedures."
         )
 
         completion = client.chat.completions.create(
@@ -108,26 +108,28 @@ def ask_ai():
         )
         
         full_text = completion.choices[0].message.content
-        summary = "No summary generated."
-        deep_dive = "No details generated."
         
-        # --- ROBUST PARSING ---
-        if "PART_2_DEEP_DIVE" in full_text:
-            parts = full_text.split("PART_2_DEEP_DIVE")
-            summary = parts[0].replace("PART_1_SUMMARY:", "").strip()
-            deep_dive = parts[1].strip().lstrip(':').strip()
+        # --- ROBUST SPLITTING ---
+        # We split by '|||' which is much more reliable than text markers
+        if "|||" in full_text:
+            parts = full_text.split("|||")
+            summary = parts[0].strip()
+            deep_dive = parts[1].strip()
         else:
-            # Fallback if AI messes up headers
-            summary = full_text[:200] + "..." 
+            # Fallback in case AI ignores the separator
+            summary = full_text.split('.')[0] + "."
             deep_dive = full_text
 
-        # --- GATED RETURN ---
+        # Clean up any accidental labels the AI might have added to the summary
+        summary = re.sub(r'^(Summary|PART 1|Overview):', '', summary, flags=re.IGNORECASE).strip()
+
+        # --- THE GATED RETURN ---
         return jsonify({
             "status": "premium" if is_paid else "free",
             "credits_left": credits_left,
-            "summary": summary,
-            # If not paid, deep_dive is NEVER sent to the browser
-            "content": deep_dive if is_paid else "🔒 Payment required to view specific Acts, Section citations, and step-by-step court filing guides."
+            "summary": summary, # Always visible
+            # 'content' is ONLY shown to paid users. Free users get the lock message.
+            "content": deep_dive if is_paid else "🔒 Unlock the Deep Dive: Get specific legal Acts, Sections, and a step-by-step court filing guide for just KES 20."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
