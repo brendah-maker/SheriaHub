@@ -139,7 +139,9 @@
     function setCat(c) {
         cat = c;
         document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(`btn-${c}`).classList.add('active');
+        const btn = document.getElementById(`btn-${c}`);
+        if(btn) btn.classList.add('active');
+        
         const placeholders = {
             tenant: "Ask about rent, deposits, or evictions...",
             employment: "Ask about dismissal or leave...",
@@ -151,58 +153,51 @@
         document.getElementById("q").placeholder = placeholders[c];
     }
 
-async function askAi() {
-    const qInput = document.getElementById("q");
-    const resDiv = document.getElementById("res");
-    const btn = document.getElementById("askBtn");
-    
-    const question = qInput.value.trim() || lastQ;
-    if (!question) return;
-    lastQ = question;
-
-    btn.disabled = true;
-    resDiv.innerHTML = `<p style="text-align:center; font-weight:500;">⏳ Sheria AI is analyzing Kenyan Law...</p>`;
-
-    try {
-        const response = await fetch(`${API}/ask-ai`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ question, category: cat })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Server responded with ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data && data.answer) {
-            // Success path
-            resDiv.innerHTML = `
-                <div class="premium-content" style="white-space: pre-wrap;">${data.answer}</div>
-            `;
-            resDiv.scrollIntoView({ behavior: 'smooth' });
-        } else {
-            throw new Error("Invalid response format from server");
-        }
-
-    } 
-    } catch (e) {
-        // This will print the EXACT error to your browser console (F12)
-        console.error("SheriaHub Debug Error:", e);
+    async function askAi() {
+        const qInput = document.getElementById("q");
+        const resDiv = document.getElementById("res");
+        const btn = document.getElementById("askBtn");
         
-        // Show a more helpful message to the user
-        resDiv.innerHTML = `
-            <p style='color:red;text-align:center;'>
-                Connection Error: ${e.message}<br>
-                <small>Check browser console (F12) for details.</small>
-            </p>`;
-    } finally { 
-        btn.disabled = false; 
-    }
+        const question = qInput.value.trim() || lastQ;
+        if (!question) return;
+        lastQ = question;
 
-}
-    
+        btn.disabled = true;
+        resDiv.innerHTML = `<p style="text-align:center; font-weight:500;">⏳ Sheria AI is analyzing Kenyan Law...</p>`;
+
+        try {
+            const response = await fetch(`${API}/ask-ai`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question, category: cat })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data && data.answer) {
+                resDiv.innerHTML = `
+                    <div class="premium-content" style="white-space: pre-wrap;">${data.answer}</div>
+                `;
+                resDiv.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                throw new Error("Invalid response format from server");
+            }
+
+        } catch (e) {
+            console.error("SheriaHub Debug Error:", e);
+            resDiv.innerHTML = `
+                <p style='color:red;text-align:center;'>
+                    Something went wrong: ${e.message}<br>
+                    <small>Please check your connection and try again.</small>
+                </p>`;
+        } finally { 
+            btn.disabled = false; 
+        }
+    }
 </script>
 
 </body>
