@@ -73,12 +73,6 @@
             <p>Instant legal intelligence for Citizens, Tenants & Motorists using Kenyan Statutes.</p>
         </header>
 
-        <div style="text-align: center; margin: 20px 0;">
-            <button onclick="openModal()" style="background: #27ae60; color: white; padding: 12px 25px; border: none; border-radius: 30px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3); font-family: 'Poppins', sans-serif;">
-                💰 Terminal Dues Calculator
-            </button>
-        </div>
-
         <div class="category-selector">
             <button class="cat-btn active" id="btn-tenant" onclick="setCat('tenant')">🏠 Tenancy</button>
             <button class="cat-btn" id="btn-employment" onclick="setCat('employment')">💼 Employment</button>
@@ -95,6 +89,12 @@
         </main>
 
         <section class="info-section">
+            <div style="text-align: center; margin-bottom: 50px;">
+                <button onclick="openModal()" style="background: #27ae60; color: white; padding: 15px 30px; border: none; border-radius: 30px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3); font-family: 'Poppins', sans-serif; font-size: 1rem;">
+                    💰 Terminal Dues Calculator
+                </button>
+            </div>
+
             <h2 class="section-title">Practice Areas Covered</h2>
             <div class="practice-grid">
                 <div class="practice-box">
@@ -154,9 +154,6 @@
             <div id="calc-result" style="display: none; margin-top: 20px; padding: 20px; background: #f0fff4; border-radius: 12px; border: 1px solid #c6f6d5; text-align: center;">
                 <div style="color: #2f855a; font-size: 0.9rem; font-weight: 600;">Estimated Dues:</div>
                 <div style="font-size: 1.8rem; font-weight: 800; color: var(--navy); margin: 5px 0;">KES <span id="total-val">0</span></div>
-                <button onclick="shareOnWhatsapp()" style="background: #25D366; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; margin-top: 10px; width: 100%;">
-                    Share on WhatsApp 📱
-                </button>
             </div>
         </div>
     </div>
@@ -266,12 +263,6 @@
 
         valSpan.innerText = total.toLocaleString();
         resBox.style.display = 'block';
-    }
-
-    function shareOnWhatsapp() {
-        const total = document.getElementById('total-val').innerText;
-        const text = `I just used the SheriaHub Terminal Dues Calculator! My estimate is KES ${total}. Check your Kenyan legal rights here: https://sheriahub.co.ke`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
     </script>
     
