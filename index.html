@@ -137,14 +137,11 @@
     let lastQ = "";
 
     function setCat(c) {
-        console.log("Category selected:", c);
         cat = c;
-        // Update button colors
         document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
         const activeBtn = document.getElementById(`btn-${c}`);
         if(activeBtn) activeBtn.classList.add('active');
 
-        // Update placeholder text
         const placeholders = {
             tenant: "Ask about rent, deposits, or evictions...",
             employment: "Ask about dismissal or leave...",
@@ -175,39 +172,27 @@
                 body: JSON.stringify({ question, category: cat })
             });
 
-            if (!response.ok) {
-                throw new Error(`Server Error: ${response.status}`);
-            }
-
             const data = await response.json();
-            console.log("Server Debug Info:", data);
 
-            // FIX: This line now looks for 'content' which matches your screenshot!
-            const finalAnswer = data.answer || data.content || data.response || data.message;
+            // This line ensures we find the real text, ignoring any "Locked" messages if they exist
+            const finalAnswer = data.answer || data.summary || (data.content !== "🔒 Detailed analysis locked." ? data.content : null);
 
             if (finalAnswer) {
-                // Success path: Display the text clearly
                 resDiv.innerHTML = `
-                    <div class="premium-content" style="white-space: pre-wrap; margin-top:25px;">${finalAnswer}</div>
+                    <div class="premium-content" style="white-space: pre-wrap; margin-top:25px; border: 2px solid #38a169; background: #f0fff4;">${finalAnswer}</div>
                 `;
                 resDiv.scrollIntoView({ behavior: 'smooth' });
             } else {
-                // If the key is totally different, we show this error
-                throw new Error("Could not find the text in the server response.");
+                resDiv.innerHTML = `<p style='color:red; text-align:center;'>Analysis not available. Please try again.</p>`;
             }
 
         } catch (e) {
-            console.error("SheriaHub Error:", e);
-            resDiv.innerHTML = `
-                <p style='color:red; text-align:center; margin-top:20px; font-weight:bold;'>
-                    Something went wrong: ${e.message}<br>
-                    <small style="font-weight:normal;">Please check your connection and try again.</small>
-                </p>`;
+            resDiv.innerHTML = `<p style='color:red; text-align:center;'>Connection Error. Please check your internet.</p>`;
         } finally { 
             btn.disabled = false; 
         }
     }
 </script>
-
+    
 </body>
 </html>
