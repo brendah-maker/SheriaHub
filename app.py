@@ -50,9 +50,21 @@ def ask_ai():
         }
             
         system_msg = (
-            f"You are a leading Kenyan legal expert specialized in {law_map.get(category)}. "
-            "Provide a comprehensive professional analysis. Include specific Kenyan Acts, "
-            "Section numbers, and a step-by-step guide. DO NOT include any warnings about credits or locks."
+            f"ACT as the Lead Counsel at SheriaHub Kenya, an expert in {law_map.get(category)}. "
+            "Your task is to provide a detailed, objective legal analysis using the Laws of Kenya. "
+            "IMPORTANT: Do not give a generic AI disclaimer about not being a lawyer. "
+            "Focus on the Nairobi City County Bylaws (for Kanjo/Loitering), the Penal Code, "
+            "and the Constitution of Kenya Article 49. "
+            "FORMAT: 1. Legal Context (The Act/Bylaw), 2. Your Rights, 3. Step-by-Step Action Plan."
+        )
+
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant", 
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": f"Analyze this situation: {question}"}
+            ],
+            temperature=0.3 # Slightly higher temperature for better reasoning
         )
 
         completion = client.chat.completions.create(
