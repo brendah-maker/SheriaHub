@@ -151,43 +151,49 @@
         document.getElementById("q").placeholder = placeholders[c];
     }
 
-    async function askAi() {
-        const qInput = document.getElementById("q");
-        const resDiv = document.getElementById("res");
-        const btn = document.getElementById("askBtn");
-        
-        const question = qInput.value || lastQ;
-        if (!question) return;
-        lastQ = question;
+async function askAi() {
+    const qInput = document.getElementById("q");
+    const resDiv = document.getElementById("res");
+    const btn = document.getElementById("askBtn");
+    
+    const question = qInput.value.trim() || lastQ;
+    if (!question) return;
+    lastQ = question;
 
-        btn.disabled = true;
-        resDiv.innerHTML = `<p style="text-align:center; font-weight:500;">⏳ Sheria AI is analyzing Kenyan Law...</p>`;
+    btn.disabled = true;
+    resDiv.innerHTML = `<p style="text-align:center; font-weight:500;">⏳ Sheria AI is analyzing Kenyan Law...</p>`;
 
-        try {
-            const response = await fetch(`${API}/ask-ai`, {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ question, category: cat })
-            });
-            const data = await response.json();
+    try {
+        const response = await fetch(`${API}/ask-ai`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question, category: cat })
+        });
 
-            // FIX: We now check for 'data.answer' (the new backend format)
-            if (!data || !data.answer) {
-                resDiv.innerHTML = `<p style='color:red;text-align:center;'>Something went wrong. Please try again.</p>`;
-                return;
-            }
+        if (!response.ok) {
+            throw new Error(`Server responded with ${response.status}`);
+        }
 
-            // Displays the feedback using your existing 'premium-content' style
-            // We use white-space: pre-wrap to keep the AI's formatting
+        const data = await response.json();
+
+        if (data && data.answer) {
+            // Success path
             resDiv.innerHTML = `
                 <div class="premium-content" style="white-space: pre-wrap;">${data.answer}</div>
             `;
             resDiv.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            throw new Error("Invalid response format from server");
+        }
 
-        } catch (e) {
-            resDiv.innerHTML = "<p style='color:red;text-align:center;'>Something went wrong. Please try again.</p>";
-        } finally { btn.disabled = false; }
+    } catch (e) {
+        console.error("SheriaHub Error:", e); // Check F12 Console for this!
+        resDiv.innerHTML = `<p style='color:red;text-align:center;'>Connection Error. Please check your internet or try again later.</p>`;
+    } finally { 
+        btn.disabled = false; 
     }
+}
+    
 </script>
 
 </body>
