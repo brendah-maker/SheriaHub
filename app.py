@@ -77,11 +77,11 @@ def ask_ai():
         ai_response = completion.choices[0].message.content.strip()
 
         # Return the success response
-        return jsonify({
-            "status": "success",
-            "answer": ai_response
-        })
-
+# In app.py
+return jsonify({
+    "status": "success",
+    "answer": ai_response  # Ensure you use 'answer' here
+})
     except Exception as e:
         print(f"Error occurred: {str(e)}") # This shows up in your Render logs
         return jsonify({"error": str(e)}), 500
