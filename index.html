@@ -130,18 +130,20 @@
             <strong>Disclaimer:</strong> SheriaHub is an AI information tool. It provides general information based on Kenyan Statutes and does not constitute professional legal advice.
         </p>
     </footer>
-
 <script>
     const API = "https://sheriahub.onrender.com"; 
     let cat = "tenant";
     let lastQ = "";
 
     function setCat(c) {
+        console.log("Switching to category:", c);
         cat = c;
+        // 1. Fix buttons: remove active from all, add to current
         document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-        const btn = document.getElementById(`btn-${c}`);
-        if(btn) btn.classList.add('active');
-        
+        const activeBtn = document.getElementById(`btn-${c}`);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        // 2. Update placeholder
         const placeholders = {
             tenant: "Ask about rent, deposits, or evictions...",
             employment: "Ask about dismissal or leave...",
@@ -150,7 +152,7 @@
             traffic: "Ask about traffic fines or accidents...",
             civil_criminal: "Ask about theft, assault, or damage..."
         };
-        document.getElementById("q").placeholder = placeholders[c];
+        document.getElementById("q").placeholder = placeholders[c] || "Ask a question...";
     }
 
     async function askAi() {
@@ -173,22 +175,27 @@
             });
 
             if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}`);
+                throw new Error(`Server Error: ${response.status}`);
             }
 
             const data = await response.json();
+            console.log("Full Server Response:", data); // Check F12 Console to see this!
 
-            if (data && data.answer) {
+            // SMART CHECK: Try to find the answer in different common keys
+            const aiAnswer = data.answer || data.response || data.message || data.text;
+
+            if (aiAnswer) {
                 resDiv.innerHTML = `
-                    <div class="premium-content" style="white-space: pre-wrap;">${data.answer}</div>
+                    <div class="premium-content" style="white-space: pre-wrap;">${aiAnswer}</div>
                 `;
                 resDiv.scrollIntoView({ behavior: 'smooth' });
             } else {
-                throw new Error("Invalid response format from server");
+                // If we get here, the server sent JSON but no actual text
+                throw new Error("Server sent data but no answer found. Content: " + JSON.stringify(data));
             }
 
         } catch (e) {
-            console.error("SheriaHub Debug Error:", e);
+            console.error("SheriaHub Error:", e);
             resDiv.innerHTML = `
                 <p style='color:red;text-align:center;'>
                     Something went wrong: ${e.message}<br>
