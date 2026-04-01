@@ -130,20 +130,21 @@
             <strong>Disclaimer:</strong> SheriaHub is an AI information tool. It provides general information based on Kenyan Statutes and does not constitute professional legal advice.
         </p>
     </footer>
-<script>
+
+    <script>
     const API = "https://sheriahub.onrender.com"; 
     let cat = "tenant";
     let lastQ = "";
 
     function setCat(c) {
-        console.log("Switching to category:", c);
+        console.log("Category selected:", c);
         cat = c;
-        // 1. Fix buttons: remove active from all, add to current
+        // Update button colors
         document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
         const activeBtn = document.getElementById(`btn-${c}`);
-        if (activeBtn) activeBtn.classList.add('active');
+        if(activeBtn) activeBtn.classList.add('active');
 
-        // 2. Update placeholder
+        // Update placeholder text
         const placeholders = {
             tenant: "Ask about rent, deposits, or evictions...",
             employment: "Ask about dismissal or leave...",
@@ -165,7 +166,7 @@
         lastQ = question;
 
         btn.disabled = true;
-        resDiv.innerHTML = `<p style="text-align:center; font-weight:500;">⏳ Sheria AI is analyzing Kenyan Law...</p>`;
+        resDiv.innerHTML = `<p style="text-align:center; font-weight:600; color:#0a1f44; margin-top:20px;">⏳ Sheria AI is analyzing Kenyan Law...</p>`;
 
         try {
             const response = await fetch(`${API}/ask-ai`, {
@@ -179,27 +180,28 @@
             }
 
             const data = await response.json();
-            console.log("Full Server Response:", data); // Check F12 Console to see this!
+            console.log("Server Debug Info:", data);
 
-            // SMART CHECK: Try to find the answer in different common keys
-            const aiAnswer = data.answer || data.response || data.message || data.text;
+            // FIX: This line now looks for 'content' which matches your screenshot!
+            const finalAnswer = data.answer || data.content || data.response || data.message;
 
-            if (aiAnswer) {
+            if (finalAnswer) {
+                // Success path: Display the text clearly
                 resDiv.innerHTML = `
-                    <div class="premium-content" style="white-space: pre-wrap;">${aiAnswer}</div>
+                    <div class="premium-content" style="white-space: pre-wrap; margin-top:25px;">${finalAnswer}</div>
                 `;
                 resDiv.scrollIntoView({ behavior: 'smooth' });
             } else {
-                // If we get here, the server sent JSON but no actual text
-                throw new Error("Server sent data but no answer found. Content: " + JSON.stringify(data));
+                // If the key is totally different, we show this error
+                throw new Error("Could not find the text in the server response.");
             }
 
         } catch (e) {
             console.error("SheriaHub Error:", e);
             resDiv.innerHTML = `
-                <p style='color:red;text-align:center;'>
+                <p style='color:red; text-align:center; margin-top:20px; font-weight:bold;'>
                     Something went wrong: ${e.message}<br>
-                    <small>Please check your connection and try again.</small>
+                    <small style="font-weight:normal;">Please check your connection and try again.</small>
                 </p>`;
         } finally { 
             btn.disabled = false; 
