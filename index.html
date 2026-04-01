@@ -50,6 +50,14 @@
         .footer-links a:hover { opacity: 1; color: var(--gold); }
         .disclaimer { font-size: 0.8rem; opacity: 0.7; max-width: 800px; margin: 20px auto 0; line-height: 1.4; }
         @media (max-width: 600px) { .hero h1 { font-size: 1.6rem; } .cat-btn { font-size: 0.75rem; padding: 10px 14px; } }
+
+        /* Modal Specific Styles */
+        .modal-overlay { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(10, 31, 68, 0.9); backdrop-filter: blur(5px); align-items: center; justify-content: center; }
+        .modal-content { background: white; width: 90%; max-width: 450px; padding: 30px; border-radius: 20px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.3); animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .close-modal { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #aaa; }
+        .calc-input { width: 100%; padding: 12px; border-radius: 10px; border: 2px solid #e2e8f0; outline: none; font-size: 1rem; margin-top: 5px; }
+        .calc-label { display:block; font-size: 0.8rem; font-weight: 600; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -65,6 +73,12 @@
             <p>Instant legal intelligence for Citizens, Tenants & Motorists using Kenyan Statutes.</p>
         </header>
 
+        <div style="text-align: center; margin: 20px 0;">
+            <button onclick="openModal()" style="background: #27ae60; color: white; padding: 12px 25px; border: none; border-radius: 30px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3); font-family: 'Poppins', sans-serif;">
+                💰 Terminal Dues Calculator
+            </button>
+        </div>
+
         <div class="category-selector">
             <button class="cat-btn active" id="btn-tenant" onclick="setCat('tenant')">🏠 Tenancy</button>
             <button class="cat-btn" id="btn-employment" onclick="setCat('employment')">💼 Employment</button>
@@ -79,37 +93,6 @@
             <button class="ask-btn" id="askBtn" onclick="askAi()">Get AI Consultation</button>
             <div id="res"></div>
         </main>
-
-        <section class="chat-container" style="background: #ffffff; border-top: 4px solid #27ae60; margin-top: 0;">
-    <h3 style="margin-top: 0; color: var(--navy); display: flex; align-items: center; gap: 8px;">
-        💰 Terminal Dues Estimator
-    </h3>
-    <p style="font-size: 0.9rem; color: #666; margin-bottom: 20px;">
-        Estimate your final pay under the Employment Act 2007 (Severance + Notice).
-    </p>
-
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-        <div>
-            <label style="font-size: 0.8rem; font-weight: 600;">Gross Salary (KES)</label>
-            <input type="number" id="salary" placeholder="e.g. 50000" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e2e8f0; outline: none;">
-        </div>
-        <div>
-            <label style="font-size: 0.8rem; font-weight: 600;">Years Worked</label>
-            <input type="number" id="years" placeholder="e.g. 3" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e2e8f0; outline: none;">
-        </div>
-    </div>
-
-    <button class="ask-btn" onclick="calculateDues()" style="background: #27ae60; padding: 12px;">Calculate Dues</button>
-
-    <div id="calc-result" style="display: none; margin-top: 20px; padding: 15px; background: #f0fff4; border-radius: 12px; border: 1px solid #c6f6d5;">
-        <div style="color: #2f855a; font-size: 0.9rem;">Estimated Total Dues:</div>
-        <div style="font-size: 1.5rem; font-weight: 700; color: var(--navy);">KES <span id="total-val">0</span></div>
-        <hr style="border: 0; border-top: 1px solid #c6f6d5; margin: 10px 0;">
-        <button onclick="shareOnWhatsapp()" style="background: #25D366; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">
-            Share on WhatsApp 📱
-        </button>
-    </div>
-</section>
 
         <section class="info-section">
             <h2 class="section-title">Practice Areas Covered</h2>
@@ -152,6 +135,30 @@
                 </div>
             </div>
         </section>
+    </div>
+
+    <div id="calcModal" class="modal-overlay">
+        <div class="modal-content">
+            <span onclick="closeModal()" class="close-modal">&times;</span>
+            <h3 style="margin-top: 0; color: var(--navy);">Terminal Dues Estimator</h3>
+            <p style="font-size: 0.85rem; color: #666; margin-bottom: 20px;">Based on the Employment Act 2007 (Severance + Notice Pay).</p>
+
+            <label class="calc-label">Monthly Gross Salary (KES)</label>
+            <input type="number" id="salary" placeholder="e.g. 60000" class="calc-input">
+
+            <label class="calc-label">Years of Service</label>
+            <input type="number" id="years" placeholder="e.g. 4" class="calc-input" style="margin-bottom: 20px;">
+
+            <button onclick="runCalculation()" style="width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; font-size: 1rem;">Calculate My Dues</button>
+
+            <div id="calc-result" style="display: none; margin-top: 20px; padding: 20px; background: #f0fff4; border-radius: 12px; border: 1px solid #c6f6d5; text-align: center;">
+                <div style="color: #2f855a; font-size: 0.9rem; font-weight: 600;">Estimated Dues:</div>
+                <div style="font-size: 1.8rem; font-weight: 800; color: var(--navy); margin: 5px 0;">KES <span id="total-val">0</span></div>
+                <button onclick="shareOnWhatsapp()" style="background: #25D366; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; margin-top: 10px; width: 100%;">
+                    Share on WhatsApp 📱
+                </button>
+            </div>
+        </div>
     </div>
 
     <footer class="footer">
@@ -209,7 +216,6 @@
             });
 
             const data = await response.json();
-
             const finalAnswer = data.answer || data.summary || (data.content !== "🔒 Detailed analysis locked." ? data.content : null);
 
             if (finalAnswer) {
@@ -220,12 +226,52 @@
             } else {
                 resDiv.innerHTML = `<p style='color:red; text-align:center;'>Analysis not available. Please try again.</p>`;
             }
-
         } catch (e) {
             resDiv.innerHTML = `<p style='color:red; text-align:center;'>Connection Error. Please check your internet.</p>`;
         } finally { 
             btn.disabled = false; 
         }
+    }
+
+    /* Modal Logic */
+    function openModal() {
+        document.getElementById("calcModal").style.display = "flex";
+    }
+
+    function closeModal() {
+        document.getElementById("calcModal").style.display = "none";
+    }
+
+    window.onclick = function(event) {
+        let modal = document.getElementById("calcModal");
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+
+    function runCalculation() {
+        const salary = parseFloat(document.getElementById('salary').value);
+        const years = parseFloat(document.getElementById('years').value);
+        const resBox = document.getElementById('calc-result');
+        const valSpan = document.getElementById('total-val');
+
+        if (!salary || !years) {
+            alert("Please enter both salary and years of service.");
+            return;
+        }
+
+        const severance = (salary / 30) * 15 * years;
+        const noticePay = salary; 
+        const total = severance + noticePay;
+
+        valSpan.innerText = total.toLocaleString();
+        resBox.style.display = 'block';
+    }
+
+    function shareOnWhatsapp() {
+        const total = document.getElementById('total-val').innerText;
+        const text = `I just used the SheriaHub Terminal Dues Calculator! My estimate is KES ${total}. Check your Kenyan legal rights here: https://sheriahub.co.ke`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
     </script>
     
