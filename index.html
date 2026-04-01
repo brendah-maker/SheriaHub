@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/sheria.ico" type="image/x-icon">
 
-    <!-- SEO & Styles remain exactly the same as yours -->
     <title>SheriaHub | AI-Powered Kenyan Legal Intelligence</title>
+    <meta name="description" content="Get instant legal answers on Kenyan law. Learn about your rights regarding rent increases, illegal evictions, electricity disconnection, and employment termination.">
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     
     <style>
@@ -84,35 +85,39 @@
             <div class="practice-grid">
                 <div class="practice-box">
                     <h3>Employment Act 2007</h3>
-                    <p>Guidance on wrongful dismissal, summary termination, leave rights, and contract disputes in the Kenyan workplace.</p>
+                    <p>Guidance on <strong>wrongful dismissal</strong>, terminal dues, summary termination, and contract disputes in the Kenyan workplace.</p>
                 </div>
                 <div class="practice-box">
-                    <h3>Rent Restriction Act</h3>
-                    <p>Understanding landlord-tenant relationships, rent increases, deposit refunds, and lawful eviction procedures.</p>
+                    <h3>Tenancy & Rent Laws</h3>
+                    <p>Understanding <strong>illegal evictions</strong>, rent increases, deposit refunds, and if a <strong>landlord can disconnect electricity</strong>.</p>
                 </div>
                 <div class="practice-box">
-                    <h3>Penal Code Cap 63</h3>
-                    <p>Insights into criminal offenses, rights upon arrest (Article 49), police bond, and malicious damage to property.</p>
+                    <h3>Penal Code & Rights</h3>
+                    <p>Insights into criminal offenses, <strong>rights upon arrest</strong> under Article 49, police bond, and malicious damage to property.</p>
                 </div>
                 <div class="practice-box">
                     <h3>Children Act 2022</h3>
-                    <p>Information on child maintenance, custody rights, and the legal welfare of minors in Kenya.</p>
+                    <p>Information on <strong>child maintenance</strong>, custody rights, and the legal welfare of minors in Kenya.</p>
                 </div>
             </div>
 
             <h2 class="section-title">Frequently Asked Questions</h2>
             <div class="faq-container">
                 <div class="faq-item">
-                    <div class="faq-q">Can a landlord increase rent without notice in Kenya? <span>+</span></div>
-                    <div class="faq-a">Under the Rent Restriction Act, a landlord must provide at least one month's written notice before increasing rent.</div>
+                    <div class="faq-q">Can a landlord disconnect electricity or water in Kenya? <span>+</span></div>
+                    <div class="faq-a">No. It is illegal for a landlord to disconnect utilities to force an eviction. This is a violation of the Rent Restriction Act.</div>
                 </div>
                 <div class="faq-item">
-                    <div class="faq-q">What is the penalty for summary dismissal? <span>+</span></div>
-                    <div class="faq-a">Wrongful summary dismissal can lead to compensation up to 12 months' salary plus terminal benefits.</div>
+                    <div class="faq-q">Can a landlord lock out a tenant for unpaid rent? <span>+</span></div>
+                    <div class="faq-a">A landlord cannot legally lock you out without a court order or following the Distress for Rent Act process.</div>
                 </div>
                 <div class="faq-item">
-                    <div class="faq-q">How long can police hold you without court? <span>+</span></div>
-                    <div class="faq-a">Article 49 of the Constitution requires an arrested person to be brought before a court within 24 hours.</div>
+                    <div class="faq-q">How much notice is required for a rent increase? <span>+</span></div>
+                    <div class="faq-a">Under Kenyan law, landlords must generally provide at least 30 days' (one month) written notice before increasing rent.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-q">What is the notice period for summary dismissal? <span>+</span></div>
+                    <div class="faq-a">Summary dismissal happens without notice for "gross misconduct," but the employer must still follow a fair hearing process.</div>
                 </div>
             </div>
         </section>
@@ -174,7 +179,6 @@
 
             const data = await response.json();
 
-            // This line ensures we find the real text, ignoring any "Locked" messages if they exist
             const finalAnswer = data.answer || data.summary || (data.content !== "🔒 Detailed analysis locked." ? data.content : null);
 
             if (finalAnswer) {
@@ -192,7 +196,7 @@
             btn.disabled = false; 
         }
     }
-</script>
+    </script>
     
 </body>
 </html>
