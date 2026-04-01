@@ -80,6 +80,37 @@
             <div id="res"></div>
         </main>
 
+        <section class="chat-container" style="background: #ffffff; border-top: 4px solid #27ae60; margin-top: 0;">
+    <h3 style="margin-top: 0; color: var(--navy); display: flex; align-items: center; gap: 8px;">
+        💰 Terminal Dues Estimator
+    </h3>
+    <p style="font-size: 0.9rem; color: #666; margin-bottom: 20px;">
+        Estimate your final pay under the Employment Act 2007 (Severance + Notice).
+    </p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+        <div>
+            <label style="font-size: 0.8rem; font-weight: 600;">Gross Salary (KES)</label>
+            <input type="number" id="salary" placeholder="e.g. 50000" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e2e8f0; outline: none;">
+        </div>
+        <div>
+            <label style="font-size: 0.8rem; font-weight: 600;">Years Worked</label>
+            <input type="number" id="years" placeholder="e.g. 3" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e2e8f0; outline: none;">
+        </div>
+    </div>
+
+    <button class="ask-btn" onclick="calculateDues()" style="background: #27ae60; padding: 12px;">Calculate Dues</button>
+
+    <div id="calc-result" style="display: none; margin-top: 20px; padding: 15px; background: #f0fff4; border-radius: 12px; border: 1px solid #c6f6d5;">
+        <div style="color: #2f855a; font-size: 0.9rem;">Estimated Total Dues:</div>
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--navy);">KES <span id="total-val">0</span></div>
+        <hr style="border: 0; border-top: 1px solid #c6f6d5; margin: 10px 0;">
+        <button onclick="shareOnWhatsapp()" style="background: #25D366; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">
+            Share on WhatsApp 📱
+        </button>
+    </div>
+</section>
+
         <section class="info-section">
             <h2 class="section-title">Practice Areas Covered</h2>
             <div class="practice-grid">
