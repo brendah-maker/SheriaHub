@@ -1,11 +1,13 @@
 import os
+import io
+import PyPDF2
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 from groq import Groq
 
 app = Flask(__name__)
 
-# Allows your website to talk to this backend
+# Allowed origins for CORS
 CORS(app, resources={r"/*": {
     "origins": [
         "https://www.sheriahub.co.ke", 
@@ -26,12 +28,11 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 def health():
     return jsonify({"status": "Healthy"}), 200
 
-# --- THE AI LOGIC ---
+# --- EXISTING AI LOGIC ---
 @app.route('/ask-ai', methods=['POST', 'OPTIONS'])
 def ask_ai():
     if request.method == 'OPTIONS':
         return make_response('', 204)
-
     if not client: 
         return jsonify({"error": "AI not initialized"}), 500
     
@@ -51,20 +52,8 @@ def ask_ai():
             
         system_msg = (
             f"ACT as the Lead Counsel at SheriaHub Kenya, an expert in {law_map.get(category)}. "
-            "Your task is to provide a detailed, objective legal analysis using the Laws of Kenya. "
-            "IMPORTANT: Do not give a generic AI disclaimer about not being a lawyer. "
-            "Focus on the Nairobi City County Bylaws (for Kanjo/Loitering), the Penal Code, "
-            "and the Constitution of Kenya Article 49. "
-            "FORMAT: 1. Legal Context (The Act/Bylaw), 2. Your Rights, 3. Step-by-Step Action Plan."
-        )
-
-        completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant", 
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": f"Analyze this situation: {question}"}
-            ],
-            temperature=0.3 # Slightly higher temperature for better reasoning
+            "Provide detailed legal analysis using the Laws of Kenya. "
+            "FORMAT: 1. Legal Context, 2. Your Rights, 3. Step-by-Step Action Plan."
         )
 
         completion = client.chat.completions.create(
@@ -75,15 +64,55 @@ def ask_ai():
             ],
             temperature=0.1 
         )
-        
-        ai_response = completion.choices[0].message.content.strip()
+        return jsonify({"status": "success", "answer": completion.choices[0].message.content.strip()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-        # SUCCESS: Sending ONLY the answer
+# --- NEW: CONTRACT REVIEW LOGIC ---
+@app.route('/review-contract', methods=['POST'])
+def review_contract():
+    if not client: 
+        return jsonify({"error": "AI not initialized"}), 500
+    
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    
+    file = request.files['file']
+    
+    try:
+        # Extract text from PDF
+        pdf_reader = PyPDF2.PdfReader(io.BytesIO(file.read()))
+        contract_text = ""
+        for page in pdf_reader.pages:
+            text = page.extract_text()
+            if text: contract_text += text
+        
+        # Limit text to first 12,000 chars to fit AI context
+        contract_text = contract_text[:12000]
+
+        system_msg = (
+            "ACT as a Senior Kenyan Advocate. You are reviewing a legal contract (Lease, Employment, or Service Agreement). "
+            "Analyze it strictly under the Laws of Kenya (Law of Contract Act, Employment Act, etc.). "
+            "Structure your response: "
+            "1. CRITICAL RED FLAGS (Unfair or illegal clauses), "
+            "2. OMISSION ALERT (What is missing that should be there?), "
+            "3. RECOMMENDATION (Should they sign? What should they negotiate?). "
+            "Be precise and protective of the user."
+        )
+
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant", 
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": f"Review this contract text and provide analysis: {contract_text}"}
+            ],
+            temperature=0.1 
+        )
+        
         return jsonify({
             "status": "success",
-            "answer": ai_response
+            "answer": completion.choices[0].message.content.strip()
         })
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
